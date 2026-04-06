@@ -16,6 +16,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
+logging.getLogger("app.main").info("cors_origins=%s", settings.cors_origins_list)
 
 
 @asynccontextmanager
