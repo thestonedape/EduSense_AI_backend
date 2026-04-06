@@ -8,7 +8,8 @@ FastAPI backend for a campus lecture validation and knowledge-pipeline admin por
 - Supabase Postgres + pgvector
 - SQLAlchemy async
 - Deepgram for transcription
-- Sentence Transformers for embeddings
+- OpenAI-compatible embeddings API for production search vectors
+- Optional Sentence Transformers fallback for local development
 - FFmpeg for video-to-audio extraction
 
 ## Run locally
@@ -68,6 +69,36 @@ SUPABASE_REFERENCE_BUCKET=reference-content
 
 The local `storage/uploads` directory is still used as a processing cache for Deepgram preprocessing and rebuild flows.
 
+## Embeddings
+
+Production deploys can avoid the heavy local transformer stack by using an OpenAI-compatible embeddings API. If you already use OpenRouter, the backend can reuse that key directly.
+
+Set these in `.env` for Render:
+
+```bash
+EMBEDDING_PROVIDER=openrouter
+OPENROUTER_API_KEY=<your-openrouter-key>
+EMBEDDING_API_URL=https://openrouter.ai/api/v1/embeddings
+EMBEDDING_API_MODEL=text-embedding-3-small
+VECTOR_SIZE=384
+```
+
+You can also set `EMBEDDING_API_KEY` explicitly, but when `EMBEDDING_PROVIDER=openrouter` the backend will reuse `OPENROUTER_API_KEY` automatically.
+
+If you want to keep local embeddings for development, install the optional local AI dependencies:
+
+```bash
+pip install -r requirements.local-ai.txt
+```
+
+Then switch back to:
+
+```bash
+EMBEDDING_PROVIDER=local
+EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+VECTOR_SIZE=384
+```
+
 ## API surface
 
 - `GET /api/v1/dashboard`
@@ -83,7 +114,7 @@ The local `storage/uploads` directory is still used as a processing cache for De
 ## Notes
 
 - `ffmpeg` must be installed and available on `PATH` for video uploads.
-- The first embedding request may download model weights unless they are already cached.
+- Production runtime no longer requires `sentence-transformers` unless you explicitly use `EMBEDDING_PROVIDER=local`.
 - Set `AUTO_BOOTSTRAP_SCHEMA=false` for Supabase deployments so schema changes are controlled by Alembic only.
 - `docker-compose.yml` is now just an optional local fallback for development, not the primary deployment path.
 - The production Docker image installs the lean runtime set from `requirements.txt`; migration/local tooling stays in `requirements.dev.txt`.

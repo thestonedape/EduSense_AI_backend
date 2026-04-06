@@ -1,3 +1,4 @@
 -r requirements.txt
+-r requirements.local-ai.txt
 psycopg[binary]==3.2.9
 alembic==1.16.4

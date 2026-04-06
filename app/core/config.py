@@ -14,7 +14,12 @@ class Settings(BaseSettings):
     upload_dir: str = "storage/uploads"
     storage_backend: str = "local"
     auto_bootstrap_schema: bool = True
+    embedding_provider: str = "openai"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_api_key: str = ""
+    embedding_api_url: str = "https://api.openai.com/v1/embeddings"
+    embedding_api_model: str = "text-embedding-3-small"
+    embedding_timeout_seconds: int = 30
     deepgram_api_key: str = ""
     deepgram_api_url: str = "https://api.deepgram.com/v1/listen"
     deepgram_model: str = "nova-3"
