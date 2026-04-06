@@ -1,8 +1,9 @@
+import asyncio
 from datetime import date
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import db_session_dep
@@ -37,7 +38,6 @@ def build_subject_key(department_name: str | None, program_name: str | None, sub
 
 @router.post("/upload", response_model=UploadResponse)
 async def upload_lecture(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     reference_files: list[UploadFile] | None = File(default=None),
     additional_content_files: list[UploadFile] | None = File(default=None),
@@ -242,7 +242,13 @@ async def upload_lecture(
             await storage_service.cleanup_file(file_path, metadata)
         raise HTTPException(status_code=500, detail="Lecture upload failed before the record could be saved cleanly.") from exc
 
-    background_tasks.add_task(processing_service.launch_pipeline, lecture.id, job.id if job is not None else None)
+    asyncio.create_task(processing_service.run_pipeline(lecture.id, job.id if job is not None else None))
+    logger.info(
+        "lecture_upload_pipeline_scheduled lecture=%s job=%s filename=%s",
+        lecture.id,
+        job.id if job is not None else None,
+        file.filename,
+    )
 
     return UploadResponse(
         lecture_id=lecture.id,

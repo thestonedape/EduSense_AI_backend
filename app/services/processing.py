@@ -164,17 +164,19 @@ class ProcessingService:
         await session.commit()
 
     async def run_pipeline(self, lecture_id, job_id=None) -> None:
-        async with SessionLocal() as session:
-            lecture = await session.scalar(
-                select(Lecture)
-                .where(Lecture.id == lecture_id)
-                .options(selectinload(Lecture.reference_files))
-            )
-            if lecture is None:
-                return
-            job = await session.scalar(select(ProcessingJob).where(ProcessingJob.id == job_id)) if job_id else None
+        logger.info("pipeline_background_start lecture=%s job=%s", lecture_id, job_id)
+        try:
+            async with SessionLocal() as session:
+                lecture = await session.scalar(
+                    select(Lecture)
+                    .where(Lecture.id == lecture_id)
+                    .options(selectinload(Lecture.reference_files))
+                )
+                if lecture is None:
+                    logger.warning("pipeline_background_missing_lecture lecture=%s job=%s", lecture_id, job_id)
+                    return
+                job = await session.scalar(select(ProcessingJob).where(ProcessingJob.id == job_id)) if job_id else None
 
-            try:
                 await self._commit_progress(
                     session,
                     lecture,
@@ -317,20 +319,33 @@ class ProcessingService:
                     f"[pipeline] lecture={lecture.id} stage=completed claims={len(claims)} progress=100",
                     flush=True,
                 )
-            except Exception as exc:
-                await self._commit_progress(
-                    session,
-                    lecture,
-                    progress=100,
-                    status=LectureStatus.failed,
-                    error_message=str(exc),
-                    job=job,
-                    job_status=ProcessingJobStatus.failed,
-                    job_stage="failed",
-                    job_details={"failed_stage": job.stage if job is not None else "pipeline"},
-                    finished_job=True,
+        except Exception as exc:
+            logger.exception("pipeline_background_failed lecture=%s job=%s error=%s", lecture_id, job_id, exc)
+            try:
+                async with SessionLocal() as session:
+                    lecture = await session.scalar(select(Lecture).where(Lecture.id == lecture_id))
+                    job = await session.scalar(select(ProcessingJob).where(ProcessingJob.id == job_id)) if job_id else None
+                    if lecture is not None:
+                        await self._commit_progress(
+                            session,
+                            lecture,
+                            progress=100,
+                            status=LectureStatus.failed,
+                            error_message=str(exc),
+                            job=job,
+                            job_status=ProcessingJobStatus.failed,
+                            job_stage="failed",
+                            job_details={"failed_stage": job.stage if job is not None else "pipeline"},
+                            finished_job=True,
+                        )
+                        print(f"[pipeline] lecture={lecture.id} stage=failed error={exc}", flush=True)
+            except Exception as persist_exc:
+                logger.exception(
+                    "pipeline_failure_state_persist_failed lecture=%s job=%s error=%s",
+                    lecture_id,
+                    job_id,
+                    persist_exc,
                 )
-                print(f"[pipeline] lecture={lecture.id} stage=failed error={exc}", flush=True)
 
     def launch_pipeline(self, lecture_id, job_id=None) -> None:
         asyncio.run(self.run_pipeline(lecture_id, job_id))

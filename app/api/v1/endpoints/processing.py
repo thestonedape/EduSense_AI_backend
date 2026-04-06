@@ -1,6 +1,7 @@
+import asyncio
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -124,7 +125,6 @@ async def get_processing_job(lecture_id: UUID, session: AsyncSession = Depends(d
 
 @router.post("/processing/{lecture_id}/rebuild-structure", response_model=ProcessingItem)
 async def rebuild_processing_structure(
-    background_tasks: BackgroundTasks,
     lecture_id: UUID,
     session: AsyncSession = Depends(db_session_dep),
 ) -> ProcessingItem:
@@ -150,13 +150,12 @@ async def rebuild_processing_structure(
     await session.commit()
     await session.refresh(lecture)
 
-    background_tasks.add_task(processing_service.launch_rebuild_structure, lecture_id, job.id)
+    asyncio.create_task(processing_service.run_rebuild_structure(lecture_id, job.id))
     return await to_processing_item(session, lecture)
 
 
 @router.post("/processing/{lecture_id}/resume", response_model=ProcessingItem)
 async def resume_processing_job(
-    background_tasks: BackgroundTasks,
     lecture_id: UUID,
     session: AsyncSession = Depends(db_session_dep),
 ) -> ProcessingItem:
@@ -169,8 +168,8 @@ async def resume_processing_job(
     await session.refresh(lecture)
 
     if job.job_type == ProcessingJobType.rebuild_structure:
-        background_tasks.add_task(processing_service.launch_rebuild_structure, lecture_id, job.id)
+        asyncio.create_task(processing_service.run_rebuild_structure(lecture_id, job.id))
     else:
-        background_tasks.add_task(processing_service.launch_pipeline, lecture_id, job.id)
+        asyncio.create_task(processing_service.run_pipeline(lecture_id, job.id))
 
     return await to_processing_item(session, lecture)
