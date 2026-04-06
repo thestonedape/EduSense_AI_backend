@@ -47,10 +47,23 @@ app.include_router(router, prefix=settings.api_prefix)
 @app.middleware("http")
 async def request_timing_middleware(request: Request, call_next):
     started_at = perf_counter()
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception:
+        duration_ms = round((perf_counter() - started_at) * 1000, 1)
+        logging.getLogger("app.http").exception(
+            "request_failed method=%s path=%s duration_ms=%s",
+            request.method,
+            request.url.path,
+            duration_ms,
+        )
+        raise
+
     duration_ms = round((perf_counter() - started_at) * 1000, 1)
-    if duration_ms >= 250:
-        logging.getLogger("app.http").info(
+    if duration_ms >= 250 or response.status_code >= 400:
+        logger = logging.getLogger("app.http")
+        log_method = logger.warning if response.status_code >= 400 else logger.info
+        log_method(
             "request_timing method=%s path=%s status=%s duration_ms=%s",
             request.method,
             request.url.path,

@@ -220,6 +220,12 @@ async def upload_lecture(
         await session.refresh(lecture)
     except HTTPException as exc:
         await session.rollback()
+        logger.warning(
+            "lecture_upload_rejected status=%s detail=%s filename=%s",
+            exc.status_code,
+            exc.detail,
+            file.filename,
+        )
         for file_path, metadata in reversed(uploaded_files):
             await storage_service.cleanup_file(file_path, metadata)
         raise exc
