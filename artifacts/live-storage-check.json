@@ -1,0 +1,17 @@
+{
+  "scope": "real private Supabase upload/download/cleanup using newly created synthetic fixtures",
+  "checks": [
+    {
+      "bucket": "lecture-content",
+      "round_trip_sha256": "1b227cb26831285d0b277b4832240a9654f010a4f2b228854d26b008d6f56b2b",
+      "private_access_verified": true,
+      "public_http_status": 400
+    },
+    {
+      "bucket": "reference-content",
+      "round_trip_sha256": "1b227cb26831285d0b277b4832240a9654f010a4f2b228854d26b008d6f56b2b",
+      "private_access_verified": true,
+      "public_http_status": 400
+    }
+  ]
+}
