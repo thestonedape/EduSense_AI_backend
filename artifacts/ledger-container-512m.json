@@ -1,0 +1,824 @@
+{
+  "scope": "512 MB API + arq container; real PostgreSQL/Redis; deterministic provider fixtures; ledger submissions, not uploads or actual transcription/RAG",
+  "source_commit": "88aabe4ad4f76caf3355dc1416da1f61a7077555",
+  "revision": "sha256:a70ba14577db06de6035a55e56f6ee6047ea505bf47386733f180d09bc094769",
+  "image_bytes": 1136033683,
+  "memory_limit": "512m",
+  "requests": 100,
+  "completed": 100,
+  "failures_or_pending": 0,
+  "rows_not_exactly_one": 0,
+  "cold_start_to_ready_seconds": 2.4759047999978065,
+  "ledger_commit_p50_seconds": 0.010545799999817973,
+  "ledger_commit_p95_seconds": 0.011655999995127786,
+  "end_to_end_p50_seconds": 33.842264,
+  "end_to_end_p95_seconds": 56.926249,
+  "completed_jobs_per_second": 1.6467547911355072,
+  "peak_cgroup_memory_bytes": 167583744,
+  "oom_kill_events": 0,
+  "container_oom_killed": false,
+  "raw_commit_seconds": [
+    0.12754979999590432,
+    0.011432599996624049,
+    0.011655999995127786,
+    0.011123399999632966,
+    0.011084800004027784,
+    0.011236300000746269,
+    0.01100340000266442,
+    0.01084870000340743,
+    0.010450100002344698,
+    0.010579900001175702,
+    0.010583100003714208,
+    0.010806799997226335,
+    0.010702199993829709,
+    0.010249699997075368,
+    0.010438900004373863,
+    0.01084650000120746,
+    0.010703300002205651,
+    0.009450700003071688,
+    0.010267400000884663,
+    0.010389600000053179,
+    0.010527999998885207,
+    0.011894300005224068,
+    0.010087100003147498,
+    0.010083599998324644,
+    0.01012079999782145,
+    0.011084199999459088,
+    0.010554400003456976,
+    0.010870300000533462,
+    0.011080100004619453,
+    0.010019800000009127,
+    0.01080970000475645,
+    0.010366300004534423,
+    0.009868599998299032,
+    0.010424499996588565,
+    0.010653400000592228,
+    0.012679400002525654,
+    0.010760600001958665,
+    0.010777299998153467,
+    0.01032419999683043,
+    0.010999999998603016,
+    0.010422100000141654,
+    0.010363699999288656,
+    0.009904799997457303,
+    0.010472800000570714,
+    0.01053719999617897,
+    0.010196499999437947,
+    0.010444800005643629,
+    0.010494100002688356,
+    0.01008939999883296,
+    0.011166899996169377,
+    0.010516000002098735,
+    0.010729699999501463,
+    0.010554799999226816,
+    0.01092880000214791,
+    0.010692199997720309,
+    0.010373899996920954,
+    0.010433100003865547,
+    0.010240499999781605,
+    0.010884600000281353,
+    0.010823100004927255,
+    0.010356999999203254,
+    0.011049499997170642,
+    0.01160909999452997,
+    0.010634500002197456,
+    0.010255599998345133,
+    0.010296200001903344,
+    0.010719099998823367,
+    0.01047610000387067,
+    0.011176600004546344,
+    0.010373000004619826,
+    0.010561100003542379,
+    0.010559800000919495,
+    0.010522500000661239,
+    0.01427720000356203,
+    0.012292400002479553,
+    0.011112599997431971,
+    0.010669000002963003,
+    0.010309999997843988,
+    0.01106469999649562,
+    0.010731299997132737,
+    0.009591499998350628,
+    0.010766100000182632,
+    0.010810699997819029,
+    0.010344400005124044,
+    0.009946600002876949,
+    0.009795700003451202,
+    0.010219600000709761,
+    0.009769099997356534,
+    0.009756200000992976,
+    0.009884099999908358,
+    0.010313999999198131,
+    0.011023799997929018,
+    0.010216500006208662,
+    0.009974799999326933,
+    0.009983999996620696,
+    0.009811700001591817,
+    0.010635499995260034,
+    0.01065779999771621,
+    0.010059199994429946,
+    0.01031689999945229
+  ],
+  "raw_jobs": [
+    {
+      "job_id": "29f493c1-4f12-472d-82c1-93fbe2f380d7",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 24.470837,
+      "end_to_end_seconds": 24.494629
+    },
+    {
+      "job_id": "f4546d27-1b14-404c-ba12-1372882a8778",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 24.962174,
+      "end_to_end_seconds": 24.986583
+    },
+    {
+      "job_id": "936c3a00-302c-471f-9eb3-981f672aca7c",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 10.715705,
+      "end_to_end_seconds": 10.740747
+    },
+    {
+      "job_id": "fa06affd-bf38-40e4-b495-cd54af6a2646",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 11.205611,
+      "end_to_end_seconds": 11.230489
+    },
+    {
+      "job_id": "f5b879cb-b1ad-489c-999a-3007dca57c75",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 12.188285,
+      "end_to_end_seconds": 12.213639
+    },
+    {
+      "job_id": "8a069907-b459-43f0-9c01-faceaa767e41",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 12.677859,
+      "end_to_end_seconds": 12.701518
+    },
+    {
+      "job_id": "16f4936b-070b-4844-a733-d573107aa5d0",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 13.658631,
+      "end_to_end_seconds": 13.68436
+    },
+    {
+      "job_id": "0af3bb20-f9e6-4237-b02a-eb40da58c53f",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 14.149681,
+      "end_to_end_seconds": 14.174533
+    },
+    {
+      "job_id": "dc6424f0-560a-4ede-a7ca-b8d7e1ff57c9",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 15.134848,
+      "end_to_end_seconds": 15.162196
+    },
+    {
+      "job_id": "4f215de1-a0b5-4ac1-9a43-4bfb85231253",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 15.62434,
+      "end_to_end_seconds": 15.648758
+    },
+    {
+      "job_id": "09c6a9d6-02d1-4055-a3d0-ab97643512ae",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 16.607908,
+      "end_to_end_seconds": 16.632073
+    },
+    {
+      "job_id": "4daa0c8b-ada8-403d-97cb-2488b651732f",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 17.100412,
+      "end_to_end_seconds": 17.12486
+    },
+    {
+      "job_id": "c30b629d-8a13-43ed-a281-3a36a016a74f",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 18.082064,
+      "end_to_end_seconds": 18.106918
+    },
+    {
+      "job_id": "a75fccfc-6e27-49bb-9942-069910df9381",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 18.573495,
+      "end_to_end_seconds": 18.598119
+    },
+    {
+      "job_id": "891ffb3a-baa5-4c3e-a5bc-67509a2e8c19",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 19.557231,
+      "end_to_end_seconds": 19.581872
+    },
+    {
+      "job_id": "4885321c-0b42-459f-9fb0-57808499c3fd",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 20.048184,
+      "end_to_end_seconds": 20.072755
+    },
+    {
+      "job_id": "2ee97a3e-4a14-4fd9-981b-2d2b3f729549",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 21.031201,
+      "end_to_end_seconds": 21.055994
+    },
+    {
+      "job_id": "0b59f432-d928-4cca-a7c2-65c309732208",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 21.524058,
+      "end_to_end_seconds": 21.548298
+    },
+    {
+      "job_id": "d44ca54d-3935-406a-93d1-8869de47cd71",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 22.013787,
+      "end_to_end_seconds": 22.038115
+    },
+    {
+      "job_id": "b392eacf-d46b-4316-86b2-a711a335e089",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 23.00051,
+      "end_to_end_seconds": 23.025117
+    },
+    {
+      "job_id": "fea7e8e3-a17a-40e7-8dc8-06ee24dd9767",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 23.487494,
+      "end_to_end_seconds": 23.512193
+    },
+    {
+      "job_id": "a9dbfe24-61f5-49d2-ba1b-ffa65dbe2935",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 26.927114,
+      "end_to_end_seconds": 26.952266
+    },
+    {
+      "job_id": "18c39de6-0764-46d2-9dbc-0f728c05e882",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 27.420682,
+      "end_to_end_seconds": 27.444791
+    },
+    {
+      "job_id": "742022b7-e005-49f9-a3ea-1f7ff2d5c7ba",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 28.401833,
+      "end_to_end_seconds": 28.426086
+    },
+    {
+      "job_id": "7af02df4-fa6f-4a3f-9550-8cd318ab4333",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 28.890327,
+      "end_to_end_seconds": 28.915047
+    },
+    {
+      "job_id": "2181f620-8be9-4d2a-8336-0c0304a54dbe",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 29.871554,
+      "end_to_end_seconds": 29.897199
+    },
+    {
+      "job_id": "d189d8c6-ec88-4a51-b085-c06327df577e",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 30.367832,
+      "end_to_end_seconds": 30.393541
+    },
+    {
+      "job_id": "ebe84284-90d7-4b8e-bb3c-49b4a32363b5",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 31.351912,
+      "end_to_end_seconds": 31.376402
+    },
+    {
+      "job_id": "0178d705-97de-4d46-86d7-23f8f1635522",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 31.847373,
+      "end_to_end_seconds": 31.875014
+    },
+    {
+      "job_id": "8b1dac32-daa9-4de0-8101-6d08d4abb611",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 32.830212,
+      "end_to_end_seconds": 32.856758
+    },
+    {
+      "job_id": "2402bb81-30e9-40f5-bf05-298757327684",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 33.322008,
+      "end_to_end_seconds": 33.349082
+    },
+    {
+      "job_id": "d02c7a7b-9b42-428f-b4ef-a602730466f7",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 35.309019,
+      "end_to_end_seconds": 35.337466
+    },
+    {
+      "job_id": "fbc4b12e-3e9d-4a75-a81a-912c25d0e69c",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 35.789571,
+      "end_to_end_seconds": 35.815864
+    },
+    {
+      "job_id": "51a7279c-ca20-4221-a706-67b24bd21b37",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 36.773005,
+      "end_to_end_seconds": 36.798192
+    },
+    {
+      "job_id": "7d080c5a-ee74-4602-b59b-fe493cc02305",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 37.266103,
+      "end_to_end_seconds": 37.290856
+    },
+    {
+      "job_id": "547349a8-2728-40dd-baf8-d5c015b0eca8",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 38.241164,
+      "end_to_end_seconds": 38.265278
+    },
+    {
+      "job_id": "25b2e306-df67-4c2d-8c21-cc7866407769",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 38.734032,
+      "end_to_end_seconds": 38.758816
+    },
+    {
+      "job_id": "a7082202-606a-49c9-a2bc-49d011db9799",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 39.225984,
+      "end_to_end_seconds": 39.25054
+    },
+    {
+      "job_id": "b6ac0684-59be-456b-bb53-ac26352f9f19",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 40.213298,
+      "end_to_end_seconds": 40.239315
+    },
+    {
+      "job_id": "89b61a15-c9b3-49f3-97ab-3f1f6747a35b",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 40.701866,
+      "end_to_end_seconds": 40.727037
+    },
+    {
+      "job_id": "10f88bc0-5360-4d59-a4c9-fd0cedd20246",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 41.680071,
+      "end_to_end_seconds": 41.705167
+    },
+    {
+      "job_id": "696f7543-04d7-43eb-be08-3cf925d0fcc4",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 42.1734,
+      "end_to_end_seconds": 42.197804
+    },
+    {
+      "job_id": "f968a472-446e-4513-b9c2-fc67c0b188bc",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 44.137002,
+      "end_to_end_seconds": 44.161379
+    },
+    {
+      "job_id": "c68d2af8-16c0-46c7-a257-911096c18c6d",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 44.630002,
+      "end_to_end_seconds": 44.655612
+    },
+    {
+      "job_id": "fc813352-03a4-4638-9488-dbb843fae67c",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 45.61188,
+      "end_to_end_seconds": 45.636628
+    },
+    {
+      "job_id": "9af38780-c4b0-459c-a76c-8bed2e27e06b",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 46.105031,
+      "end_to_end_seconds": 46.129111
+    },
+    {
+      "job_id": "51e6f88e-a469-444e-b318-128909a13f62",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 47.083411,
+      "end_to_end_seconds": 47.108557
+    },
+    {
+      "job_id": "f11b8984-8416-4a01-8fbf-80f0e5f70797",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 47.56919,
+      "end_to_end_seconds": 47.593288
+    },
+    {
+      "job_id": "6ee4b831-f0a0-4b3d-b7c4-3bddd770023a",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 48.5517,
+      "end_to_end_seconds": 48.576136
+    },
+    {
+      "job_id": "23361353-1e73-476e-8307-88047fa1d1c1",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 49.041547,
+      "end_to_end_seconds": 49.065997
+    },
+    {
+      "job_id": "93d0c436-1886-45a5-9b70-7b1036148e32",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 50.023786,
+      "end_to_end_seconds": 50.047594
+    },
+    {
+      "job_id": "3e4f1b89-88d4-4ced-b6ed-09690cc64f4c",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 50.513531,
+      "end_to_end_seconds": 50.53728
+    },
+    {
+      "job_id": "3ad6d13f-0280-4185-bc59-83c1296cc3ee",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 51.498029,
+      "end_to_end_seconds": 51.522345
+    },
+    {
+      "job_id": "0faf2816-5ef7-448d-b62e-b6c066e380c3",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 51.991222,
+      "end_to_end_seconds": 52.016318
+    },
+    {
+      "job_id": "07d63662-781f-4ea8-b7b9-c3d192130f44",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 52.970042,
+      "end_to_end_seconds": 52.993668
+    },
+    {
+      "job_id": "10af80a1-6722-45d1-a82b-64343334efa4",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 53.465516,
+      "end_to_end_seconds": 53.489699
+    },
+    {
+      "job_id": "2337f514-2d15-4e32-b122-f6832bf9adf5",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 54.447054,
+      "end_to_end_seconds": 54.471564
+    },
+    {
+      "job_id": "ae32f1a7-1a7e-4264-8831-9ce2906b1be4",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 54.94231,
+      "end_to_end_seconds": 54.967032
+    },
+    {
+      "job_id": "11f2f863-4e0c-4522-9486-5e011540ea68",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 55.429673,
+      "end_to_end_seconds": 55.453703
+    },
+    {
+      "job_id": "4aada0ed-c68d-430a-a106-ed611295b900",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 56.412465,
+      "end_to_end_seconds": 56.436677
+    },
+    {
+      "job_id": "35379fa9-5a62-4cd9-b321-27fd32f9e4a7",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 56.902146,
+      "end_to_end_seconds": 56.926249
+    },
+    {
+      "job_id": "fdcc3095-c7ce-43b2-ba20-409bfebdb54c",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 57.88744,
+      "end_to_end_seconds": 57.911262
+    },
+    {
+      "job_id": "debebef2-4512-421e-8a16-849f2a2c3f22",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 58.378213,
+      "end_to_end_seconds": 58.402202
+    },
+    {
+      "job_id": "2435be15-64c6-4b55-ae72-2ed92de44105",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 23.97946,
+      "end_to_end_seconds": 24.003864
+    },
+    {
+      "job_id": "1d0cc5ac-ade6-4e43-ab6c-b034159e7cf1",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 9.799466,
+      "end_to_end_seconds": 9.83418
+    },
+    {
+      "job_id": "36a6d291-0ce7-4fc9-8eb7-80fe095eb4dd",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 25.45447,
+      "end_to_end_seconds": 25.478292
+    },
+    {
+      "job_id": "425cb709-b94b-442e-9ed3-2021d718ddea",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 10.2239,
+      "end_to_end_seconds": 10.249079
+    },
+    {
+      "job_id": "3aa5e1f1-7f7c-4ff0-87d7-025e181fb107",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 11.695433,
+      "end_to_end_seconds": 11.720203
+    },
+    {
+      "job_id": "b7ba725c-cbf5-48c2-8f06-58416de541a4",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 13.168995,
+      "end_to_end_seconds": 13.194545
+    },
+    {
+      "job_id": "2538f8fa-c992-4dca-839b-e34d41e459fc",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 14.645083,
+      "end_to_end_seconds": 14.670516
+    },
+    {
+      "job_id": "404facae-d56a-4b46-9462-57eed8adade8",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 16.118011,
+      "end_to_end_seconds": 16.142093
+    },
+    {
+      "job_id": "78f5e900-38ec-43f1-b2ea-6c198d32ef39",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 17.590277,
+      "end_to_end_seconds": 17.615251
+    },
+    {
+      "job_id": "da20a74d-ffe6-449e-a0a9-d1f0ab1a454d",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 19.064695,
+      "end_to_end_seconds": 19.089021
+    },
+    {
+      "job_id": "aaadc70d-f3da-4a7e-9874-cf297524a13b",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 20.536803,
+      "end_to_end_seconds": 20.560955
+    },
+    {
+      "job_id": "253ba55f-83e4-4632-9ddb-f51f94655f3a",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 22.511886,
+      "end_to_end_seconds": 22.53797
+    },
+    {
+      "job_id": "2ff5c1ea-70f7-4ead-a5d2-ec7d7d2ba7fd",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 32.340051,
+      "end_to_end_seconds": 32.36665
+    },
+    {
+      "job_id": "74f7ec32-b83e-4e4a-b36a-6be2285e98aa",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 25.945993,
+      "end_to_end_seconds": 25.970386
+    },
+    {
+      "job_id": "191187a6-0af1-456c-8684-70db65b74691",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 26.437784,
+      "end_to_end_seconds": 26.463038
+    },
+    {
+      "job_id": "d8bd1b19-62be-41a6-a88b-2a4327787535",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 27.909124,
+      "end_to_end_seconds": 27.933531
+    },
+    {
+      "job_id": "ae479584-a7ed-40f2-94fc-d6caa7cff325",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 29.380398,
+      "end_to_end_seconds": 29.403992
+    },
+    {
+      "job_id": "62c2adfa-1da9-4d2b-bd9e-c38fbe437535",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 30.856025,
+      "end_to_end_seconds": 30.881086
+    },
+    {
+      "job_id": "ca89f117-475e-4860-88bc-40e8f6afd920",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 33.814705,
+      "end_to_end_seconds": 33.842264
+    },
+    {
+      "job_id": "5d5b64ac-7cfe-467b-a01f-f0511f8f2703",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 36.277904,
+      "end_to_end_seconds": 36.301717
+    },
+    {
+      "job_id": "8ef6ee39-c5eb-48f9-aa1d-f0bd33b8dcf8",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 37.751059,
+      "end_to_end_seconds": 37.776354
+    },
+    {
+      "job_id": "256bed14-bfab-425b-84e6-f595bdd52b79",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 59.362465,
+      "end_to_end_seconds": 59.386704
+    },
+    {
+      "job_id": "27dd0a43-ebe0-4db1-ae16-1bafcd02b54f",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 39.716934,
+      "end_to_end_seconds": 39.74197
+    },
+    {
+      "job_id": "4038c058-a71e-4634-9bfd-3f7d2690d423",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 41.191665,
+      "end_to_end_seconds": 41.216849
+    },
+    {
+      "job_id": "d7d87858-be07-4582-8df8-9d20a82f43b9",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 42.66556,
+      "end_to_end_seconds": 42.692675
+    },
+    {
+      "job_id": "b01c0ef0-65da-4fb4-938a-5f857956e977",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 58.869037,
+      "end_to_end_seconds": 58.89315
+    },
+    {
+      "job_id": "18a29941-7b2b-4307-a529-f917d49e78ac",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 43.156476,
+      "end_to_end_seconds": 43.181512
+    },
+    {
+      "job_id": "da517e90-529f-45ad-846b-79e915698b0d",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 43.646242,
+      "end_to_end_seconds": 43.670545
+    },
+    {
+      "job_id": "cde351ef-d140-43bf-bd6c-3496dff2db48",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 45.120593,
+      "end_to_end_seconds": 45.145392
+    },
+    {
+      "job_id": "6dfb7255-faad-47e5-96bb-7966e03d5787",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 46.59509,
+      "end_to_end_seconds": 46.621699
+    },
+    {
+      "job_id": "4b1cb6ef-63e6-404b-826d-38a66a221760",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 48.061101,
+      "end_to_end_seconds": 48.085705
+    },
+    {
+      "job_id": "cece14b1-985e-4c3c-a210-49859e304ae8",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 49.532832,
+      "end_to_end_seconds": 49.556667
+    },
+    {
+      "job_id": "4afe752b-094d-42b2-b77d-30c2ebf88457",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 51.005487,
+      "end_to_end_seconds": 51.029581
+    },
+    {
+      "job_id": "5ea78f64-d6c6-4809-aa36-abb833fb08dd",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 52.4837,
+      "end_to_end_seconds": 52.508855
+    },
+    {
+      "job_id": "ab9fd773-9b27-4c7f-853c-669c1f49dd4a",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 53.955486,
+      "end_to_end_seconds": 53.980557
+    },
+    {
+      "job_id": "1237b522-e909-4e6e-81a2-9aeb36d10609",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 55.919285,
+      "end_to_end_seconds": 55.943297
+    },
+    {
+      "job_id": "83b233c8-e8d9-4678-bb58-0246eadeb98f",
+      "status": "completed",
+      "transcript_rows": 1,
+      "queue_wait_seconds": 57.395225,
+      "end_to_end_seconds": 57.419745
+    }
+  ]
+}
