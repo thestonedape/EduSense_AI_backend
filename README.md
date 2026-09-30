@@ -70,7 +70,7 @@ Free hosting sleeps and has quotas. Recovery is implemented; uninterrupted uptim
 |---|---|---|---|
 | Dispatch | in-process background tasks | PostgreSQL ledger + transactional outbox + arq worker; immediate enqueue with reconcile fallback | implemented |
 | Authorization | admin APIs open, editable role metadata | signed short-lived backend claims, trusted metadata/allowlist | implemented |
-| Test suite (real PostgreSQL/pgvector + Redis) | none | 8 pass: roles, expiry, fingerprints, enqueue outage, 10 cancellations, stale lease, duplicate delivery, lease fencing | measured locally |
+| Test suite (real PostgreSQL/pgvector + Redis) | none | 9 pass: roles, expiry, fingerprints, enqueue outage, 10 cancellations, stale lease, duplicate delivery, lease fencing, database browser-role isolation | measured locally |
 | Hard worker kills | not tested | 10 real process kills after persisted checkpoint: 10/10 jobs completed, 0 duplicate rows, 0 repeated transcription calls ([artifact](artifacts/chaos-worker-kill.json)) | measured locally, fixture provider |
 | Migrations | — | additive upgrade, downgrade, upgrade round-trip on pgvector/pg16 | measured locally |
 | HNSW gate | exact scan only | recall@10 = 1.0 (global and lecture-scoped) on 5,000 synthetic 384-d vectors; 3.9 ms vs 5.6 ms median ([artifact](artifacts/hnsw-synthetic.json)) | measured locally, synthetic; not yet run on live corpus |
@@ -91,3 +91,5 @@ The ledger workload uses `scripts/benchmark_ledger.py --container-database <isol
 `python scripts/verify_live.py --base-url https://edusense-ai-backend.onrender.com --output artifacts/live-api-check.json` performs read-only live checks using the configured local signing key. It records statuses and bounded pagination only, never tokens or lecture content. Render uses native TLS Redis and `AUTO_BOOTSTRAP_SCHEMA=false`. Frontend users must sign in again because old sessions are deliberately invalidated.
 
 The configured OpenRouter account reports zero purchased credits. The current paid chat/embedding models therefore prevent claiming a verified real transcription/RAG flow. Provider readiness and account credits are separate from `/ready`; no paid credits were purchased and no fixture provider was deployed.
+
+Migration `20260930_0008` enables RLS on the 16 backend-only application/ledger tables, without permissive Data API policies. This closes a second path around backend authorization through Supabase REST. Next.js uses Supabase for authentication only; all application data access goes through the backend. The serving database role must own these tables or explicitly bypass RLS. The integration test grants a non-owner role SELECT privileges and proves it still sees no lecture or migration rows. Downgrading this security migration restores the prior RLS-disabled posture and should be used only during controlled rollback.
