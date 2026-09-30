@@ -1,0 +1,73 @@
+{
+  "checked_utc": "2026-09-30T07:09:37.272239+00:00",
+  "base_url": "https://edusense-ai-backend.onrender.com",
+  "scope": "read-only serving dependencies, signed authorization, bounded lecture pagination; no provider calls or uploads",
+  "checks": [
+    {
+      "path": "/health",
+      "identity": "anonymous",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/ready",
+      "identity": "anonymous",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/api/v1/processing?limit=1",
+      "identity": "anonymous",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/api/v1/processing?limit=1",
+      "identity": "student",
+      "status": 403,
+      "expected": 403,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/api/v1/processing?limit=1",
+      "identity": "signed check",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "request_id_present": true,
+      "bounded_result": true
+    },
+    {
+      "path": "/api/v1/processing?limit=101",
+      "identity": "signed check",
+      "status": 422,
+      "expected": 422,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/api/v1/catalog",
+      "identity": "signed check",
+      "status": 401,
+      "expected": 401,
+      "passed": true,
+      "request_id_present": true
+    },
+    {
+      "path": "/api/v1/student/subjects",
+      "identity": "student",
+      "status": 200,
+      "expected": 200,
+      "passed": true,
+      "request_id_present": true
+    }
+  ],
+  "passed": true
+}
