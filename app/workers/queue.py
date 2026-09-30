@@ -144,10 +144,17 @@ async def execute_job(ctx, job_id):
             from app.models.reference_file import ReferenceFile
             from pathlib import Path
             async with SessionLocal() as session:
+                # Fence scratch cleanup too: a replacement worker may already be
+                # using the same durable object's local download path. Hold the
+                # job lock until cleanup finishes so a new claim cannot race it.
+                cleanup_job = await session.scalar(select(ProcessingJob).where(
+                    ProcessingJob.id == job_id).with_for_update())
                 lecture = await session.get(Lecture, lecture_id)
                 references = (await session.scalars(select(ReferenceFile).where(ReferenceFile.lecture_id == lecture_id))).all()
-                metadata = [lecture.metrics] if lecture else []
-                metadata += [reference.details for reference in references]
+                owns_cleanup = cleanup_job is not None and cleanup_job.lease_token in (None, token)
+                metadata = [lecture.metrics] if lecture and owns_cleanup else []
+                if owns_cleanup:
+                    metadata += [reference.details for reference in references]
                 for details in metadata:
                     if isinstance(details, dict) and details.get('storage_backend') == 'supabase':
                         local = service.storage_service.upload_dir / Path(details['supabase_object_path']).name
