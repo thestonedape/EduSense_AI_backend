@@ -1,5 +1,5 @@
 {
-  "checked_utc": "2026-09-30T07:09:37.272239+00:00",
+  "checked_utc": "2026-09-30T08:59:56.981714+00:00",
   "base_url": "https://edusense-ai-backend.onrender.com",
   "scope": "read-only serving dependencies, signed authorization, bounded lecture pagination; no provider calls or uploads",
   "checks": [
@@ -69,5 +69,11 @@
       "request_id_present": true
     }
   ],
-  "passed": true
+  "passed": true,
+  "supabase_data_api": {
+    "identity": "anon",
+    "status": 200,
+    "application_rows_visible": false,
+    "passed": true
+  }
 }

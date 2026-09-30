@@ -1,0 +1,8 @@
+{
+  "scope": "Restored private public-schema backup into isolated PostgreSQL 17 with pgvector; no application content included in report",
+  "passed": true,
+  "migration": "20260930_0008",
+  "lectures": 2,
+  "knowledge_chunks": 58,
+  "insecure_public_tables": 0
+}
