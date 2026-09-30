@@ -16,6 +16,7 @@ from app.core.config import get_settings
 parser = argparse.ArgumentParser()
 parser.add_argument('--base-url', required=True)
 parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--anon-key-env-file', type=Path, help='Optional frontend environment file for a read-only Supabase RLS check')
 args = parser.parse_args()
 settings = get_settings()
 if not settings.internal_api_key:
@@ -50,6 +51,25 @@ with httpx.Client(base_url=args.base_url, timeout=120) as client:
             entry['passed'] &= entry['bounded_result']
         report['checks'].append(entry)
 report['passed'] = all(item['passed'] and item['request_id_present'] for item in report['checks'])
+if args.anon_key_env_file:
+    from dotenv import dotenv_values
+    key = dotenv_values(args.anon_key_env_file).get('NEXT_PUBLIC_SUPABASE_ANON_KEY', '')
+    if not key:
+        raise SystemExit('Frontend anonymous key is not configured')
+    try:
+        encoded = key.split('.')[1]
+        role = json.loads(base64.urlsafe_b64decode(encoded + '=' * (-len(encoded) % 4))).get('role')
+    except (ValueError, IndexError):
+        role = None
+    if role != 'anon':
+        raise SystemExit('RLS check requires an anonymous key, never a service-role key')
+    with httpx.Client(timeout=60) as client:
+        response = client.get(settings.supabase_url + '/rest/v1/lectures?select=id&limit=1',
+                              headers={'apikey': key, 'Authorization': 'Bearer ' + key})
+    no_rows = response.status_code == 200 and response.json() == []
+    report['supabase_data_api'] = {'identity': 'anon', 'status': response.status_code,
+                                 'application_rows_visible': not no_rows, 'passed': no_rows}
+    report['passed'] &= no_rows
 args.output.parent.mkdir(parents=True, exist_ok=True)
 args.output.write_text(json.dumps(report, indent=2))
 print(json.dumps(report, indent=2))
