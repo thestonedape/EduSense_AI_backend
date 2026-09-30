@@ -78,7 +78,7 @@ Free hosting sleeps and has quotas. Recovery is implemented; uninterrupted uptim
 | Real transcription/RAG throughput, p95, cache hit | not measured | not measured | — |
 | Live database | 2 lectures / 58 knowledge chunks, migration 20260401_0005 | private backup restored and migrations checked on isolated PostgreSQL 17; live migration 20260930_0008, same 2 / 58 rows; all 16 application tables have RLS enabled | verified against live database; no lecture content published |
 | Private storage adapter | not tested | authenticated upload/read/delete round-trips passed for both buckets; public access denied ([artifact](artifacts/live-storage-check.json)) | verified live with disposable synthetic fixtures |
-| Live demo | original backend/frontend revisions | backend `c6db12d` live on Render, frontend `8e2c9f7` ready on Vercel; eight health/auth/pagination checks pass ([artifact](artifacts/live-api-check.json)) | verified live infrastructure and authorization; real provider pipeline not yet verified |
+| Live demo | original backend/frontend revisions | upgraded backend live on Render (release `3fa38bc` checked on 30 September 2026), frontend `8e2c9f7` ready on Vercel; eight health/auth/pagination checks pass ([artifact](artifacts/live-api-check.json)) | verified live infrastructure and authorization; real provider pipeline not yet verified |
 
 Reproduce the kill test (isolated `*_test` database, disposable Redis): `WORKER_LEASE_SECONDS=6 python scripts/chaos_worker_kill.py --jobs 10 --kills 10`. Only provider calls are fixtures; leases, heartbeats, outbox, checkpoints and stage writes are production code.
 
