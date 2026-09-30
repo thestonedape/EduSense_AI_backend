@@ -60,6 +60,8 @@ GitHub Actions creates PostgreSQL/pgvector and Redis services, checks additive m
 
 Deploy a verified backend revision and checked additive migrations, then the matching Next.js frontend. New authentication requires a coordinated frontend rollout; existing unsigned admin clients will be rejected. Preserve the previous backend/frontend commits and database backup for rollback. A configured `RENDER_DEPLOY_HOOK` is triggered only after CI passes. Provider-side automatic deployment must also be gated before enabling main-branch rollout.
 
+The frontend cookie has authentication-policy version 2. Previously issued cookies are rejected even when their HMAC is valid, so old roles assigned from editable user metadata cannot be exchanged for new trusted backend claims. Users must sign in again after rollout. Four frontend regression tests cover old-session rejection, role tampering/expiry, editable-role denial and trusted metadata/allowlist approval; frontend CI runs them before the production build.
+
 Free hosting sleeps and has quotas. Recovery is implemented; uninterrupted uptime is not promised. Current Hugging Face CPU/Docker creation requires a paid plan, so it is not an assumed free fallback. No paid resources are provisioned.
 
 ## Evidence status
