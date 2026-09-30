@@ -1,5 +1,5 @@
 {
-  "checked_utc": "2026-09-30T08:59:56.981714+00:00",
+  "checked_utc": "2026-09-30T09:33:36.292044+00:00",
   "base_url": "https://edusense-ai-backend.onrender.com",
   "scope": "read-only serving dependencies, signed authorization, bounded lecture pagination; no provider calls or uploads",
   "checks": [
