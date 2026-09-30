@@ -3,8 +3,12 @@ from datetime import date
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, Header
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, text
+from app.models.submission import SubmissionKey
+from app.models.processing_job import ProcessingJob
+from app.services.idempotency import fingerprint_upload, scoped_key, lock_number
 
 from app.api.deps import db_session_dep
 from app.models.lecture_content import LectureContentItem, LectureContentRole
@@ -39,6 +43,7 @@ def build_subject_key(department_name: str | None, program_name: str | None, sub
 @router.post("/upload", response_model=UploadResponse)
 async def upload_lecture(
     file: UploadFile = File(...),
+    idempotency_key: str | None = Header(default=None),
     reference_files: list[UploadFile] | None = File(default=None),
     additional_content_files: list[UploadFile] | None = File(default=None),
     department_name: str | None = Form(default=None),
@@ -77,6 +82,23 @@ async def upload_lecture(
     normalized_course = (course.strip() if course else "") or normalized_program or normalized_department or "General"
     normalized_module = (module.strip() if module else "") or normalized_subject or "Lecture"
 
+    scope = "|".join([normalized_course, normalized_module, normalized_department or "", normalized_program or "", normalized_subject_code or ""])
+    fingerprint = await fingerprint_upload({"scope":scope, "lecture_name":lecture_name, "lecture_number":lecture_number, "lecture_date":lecture_date, "faculty":normalized_faculty}, [("source",file)] + [("reference",item) for item in reference_files or []] + [("additional",item) for item in additional_content_files or []])
+    key_hash = scoped_key(scope, idempotency_key)
+    if key_hash:
+        await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key":lock_number(key_hash)})
+        previous = await session.get(SubmissionKey, key_hash)
+        if previous and previous.fingerprint != fingerprint:
+            raise HTTPException(409, "Idempotency-Key was already used for a different request")
+    await session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key":lock_number(fingerprint)})
+    existing = await session.scalar(select(Lecture).where(Lecture.submission_fingerprint == fingerprint))
+    if existing:
+        existing_job = await session.scalar(select(ProcessingJob).where(ProcessingJob.lecture_id == existing.id).order_by(ProcessingJob.created_at.desc()).limit(1))
+        if key_hash and not await session.get(SubmissionKey, key_hash):
+            session.add(SubmissionKey(key_hash=key_hash, fingerprint=fingerprint, lecture_id=existing.id))
+        await session.commit()
+        return UploadResponse(lecture_id=existing.id, lecture_name=existing.lecture_name, status=existing.status, message="Existing lecture submission returned.", processing_job_id=existing_job.id if existing_job else None, reference_file_count=len(reference_files or []), content_item_count=1+len(reference_files or [])+len(additional_content_files or []))
+
     storage_service = StorageService()
     uploaded_files: list[tuple[str, dict]] = []
     lecture = None
@@ -91,6 +113,7 @@ async def upload_lecture(
 
         lecture = Lecture(
             lecture_name=lecture_name or file.filename.rsplit(".", 1)[0],
+            submission_fingerprint=fingerprint,
             department_name=normalized_department,
             program_name=normalized_program,
             subject_name=normalized_subject,
@@ -216,6 +239,8 @@ async def upload_lecture(
             job_type=ProcessingJobType.upload_pipeline,
             details={"source": "upload"},
         )
+        if key_hash:
+            session.add(SubmissionKey(key_hash=key_hash, fingerprint=fingerprint, lecture_id=lecture.id))
         await session.commit()
         await session.refresh(lecture)
     except HTTPException as exc:
@@ -242,7 +267,10 @@ async def upload_lecture(
             await storage_service.cleanup_file(file_path, metadata)
         raise HTTPException(status_code=500, detail="Lecture upload failed before the record could be saved cleanly.") from exc
 
-    asyncio.create_task(processing_service.run_pipeline(lecture.id, job.id if job is not None else None))
+    # Committed job/outbox: dispatch now; reconciliation retries if Redis is unavailable.
+    if job is not None:
+        from app.workers.queue import dispatch_now
+        await dispatch_now(job.id)
     logger.info(
         "lecture_upload_pipeline_scheduled lecture=%s job=%s filename=%s",
         lecture.id,

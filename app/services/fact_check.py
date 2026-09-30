@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import re
 from dataclasses import dataclass
@@ -66,14 +67,14 @@ class FactCheckService:
             select(func.count()).select_from(ReferenceFile).where(ReferenceFile.lecture_id == lecture_id)
         )
         has_reference_material = bool(reference_count)
-        candidates = self.extract_claim_candidates(transcript_segments)
+        candidates = await asyncio.to_thread(self.extract_claim_candidates, transcript_segments)
         claims: list[Claim] = []
         validation_source = "reference_evidence" if has_reference_material else "model_knowledge"
 
         sequence = 1
         for claim_text in candidates:
             evidence = await self.retrieve_evidence(session, lecture_id, claim_text) if has_reference_material else []
-            verdict, confidence, rationale = self.score_claim(
+            verdict, confidence, rationale = await asyncio.to_thread(self.score_claim,
                 claim_text,
                 evidence,
                 subject_context=getattr(lecture, "subject_name", None) or getattr(lecture, "subject_code", None),
@@ -129,7 +130,7 @@ class FactCheckService:
         )
 
     async def retrieve_evidence(self, session: AsyncSession, lecture_id, claim_text: str, limit: int = 4) -> list[KnowledgeChunk]:
-        embedding = self.embedding_service.encode([claim_text])[0]
+        embedding = (await asyncio.to_thread(self.embedding_service.encode, [claim_text]))[0]
         stmt = (
             select(KnowledgeChunk)
             .where(KnowledgeChunk.lecture_id == lecture_id)

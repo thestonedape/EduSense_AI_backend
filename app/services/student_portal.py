@@ -1,4 +1,6 @@
 from __future__ import annotations
+import asyncio
+from app.services import qa_cache
 
 import logging
 import re
@@ -446,6 +448,12 @@ class StudentPortalService:
         if lecture is None:
             return None
 
+        key = await qa_cache.cache_key(session, lecture_id, student_email, message)
+        cached = await qa_cache.read(key)
+        if cached:
+            answer = StudentChatResponse.model_validate(cached)
+            await self.persistence.append_chat_exchange(session, student_email=student_email, lecture_id=lecture_id, user_message=message, assistant_message=answer.response, citations=answer.citations)
+            return answer
         lecture_chunks = await self.knowledge_service.search(
             session,
             query=message,
@@ -470,7 +478,7 @@ class StudentPortalService:
         answer = None
         if self.openrouter.is_configured and lecture_chunks:
             try:
-                answer = self.openrouter.answer_student_question(
+                answer = await asyncio.to_thread(self.openrouter.answer_student_question,
                     question=message,
                     lecture_title=lecture.lecture_name,
                     subject_context=lecture.subject_name or lecture.subject_code,
@@ -507,7 +515,9 @@ class StudentPortalService:
             citations=citations,
         )
 
-        return StudentChatResponse(response=response, citations=citations)
+        result = StudentChatResponse(response=response, citations=citations)
+        await qa_cache.write(key, result.model_dump(mode="json"))
+        return result
 
     async def answer_global_question(
         self,

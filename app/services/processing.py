@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import get_settings
 from app.db.session import SessionLocal
+from app.models.job_outbox import JobOutbox
 from app.models.claim import Claim, ClaimVerdict
 from app.models.knowledge import KnowledgeChunk
 from app.models.lecture import Lecture, LectureStatus
@@ -79,6 +80,8 @@ class ProcessingService:
             last_heartbeat_at=now,
         )
         session.add(job)
+        await session.flush()
+        session.add(JobOutbox(job_id=job.id, next_attempt_at=now))
         await session.flush()
         return job
 
@@ -161,6 +164,12 @@ class ProcessingService:
             error_message=error_message if job_status == ProcessingJobStatus.failed else None,
             finished=finished_job,
         )
+        if job is not None and getattr(self, 'lease_token', None):
+            with session.no_autoflush:
+                actual_token = await session.scalar(select(ProcessingJob.lease_token).where(ProcessingJob.id == job.id).with_for_update())
+            if actual_token != self.lease_token:
+                await session.rollback()
+                raise RuntimeError('Worker lease lost')
         await session.commit()
 
     async def run_pipeline(self, lecture_id, job_id=None) -> None:
@@ -191,17 +200,21 @@ class ProcessingService:
                 print(f"[pipeline] lecture={lecture.id} stage=processing progress=10", flush=True)
 
                 existing_metrics = lecture.metrics if isinstance(lecture.metrics, dict) else {}
-                source_path = self.storage_service.ensure_local_path(lecture.storage_path, existing_metrics)
-                transcription = self.transcription_service.transcribe(source_path)
+                source_path = await asyncio.to_thread(self.storage_service.ensure_local_path, lecture.storage_path, existing_metrics)
+                transcription = (job.details or {}).get('transcription_checkpoint') if job else None
+                if transcription is None:
+                    transcription = await asyncio.to_thread(self.transcription_service.transcribe, source_path)
+                    if job:
+                        await self._commit_progress(session, lecture, job=job, job_details={'transcription_checkpoint': transcription})
                 logger.info(
                     "pipeline_semantic_start lecture=%s openrouter_enabled=%s",
                     lecture.id,
                     self.semantic_pipeline.openrouter.is_configured,
                 )
-                cleaned_text, sentence_units, topic_units = self.semantic_pipeline.build_from_transcription(transcription)
+                cleaned_text, sentence_units, topic_units = await asyncio.to_thread(self.semantic_pipeline.build_from_transcription, transcription)
                 await session.execute(delete(TopicSegment).where(TopicSegment.lecture_id == lecture.id))
                 await session.execute(delete(TranscriptSegment).where(TranscriptSegment.lecture_id == lecture.id))
-                await session.commit()
+                await session.flush()
                 transcript_segments = self.transcript_service.build_segments(lecture.id, sentence_units)
                 session.add_all(transcript_segments)
                 lecture.summary = cleaned_text[:1000]
@@ -319,58 +332,16 @@ class ProcessingService:
                     f"[pipeline] lecture={lecture.id} stage=completed claims={len(claims)} progress=100",
                     flush=True,
                 )
-        except Exception as exc:
-            logger.exception("pipeline_background_failed lecture=%s job=%s error=%s", lecture_id, job_id, exc)
-            try:
-                async with SessionLocal() as session:
-                    lecture = await session.scalar(select(Lecture).where(Lecture.id == lecture_id))
-                    job = await session.scalar(select(ProcessingJob).where(ProcessingJob.id == job_id)) if job_id else None
-                    if lecture is not None:
-                        await self._commit_progress(
-                            session,
-                            lecture,
-                            progress=100,
-                            status=LectureStatus.failed,
-                            error_message=str(exc),
-                            job=job,
-                            job_status=ProcessingJobStatus.failed,
-                            job_stage="failed",
-                            job_details={"failed_stage": job.stage if job is not None else "pipeline"},
-                            finished_job=True,
-                        )
-                        print(f"[pipeline] lecture={lecture.id} stage=failed error={exc}", flush=True)
-            except Exception as persist_exc:
-                logger.exception(
-                    "pipeline_failure_state_persist_failed lecture=%s job=%s error=%s",
-                    lecture_id,
-                    job_id,
-                    persist_exc,
-                )
+        except Exception:
+            # The fenced worker owns retries and terminal failure persistence.
+            raise
 
     def launch_pipeline(self, lecture_id, job_id=None) -> None:
         asyncio.run(self.run_pipeline(lecture_id, job_id))
 
     async def run_rebuild_structure(self, lecture_id, job_id=None) -> None:
         async with SessionLocal() as session:
-            try:
-                await self.rebuild_structure_from_existing_transcript(session, lecture_id, job_id=job_id)
-            except Exception as exc:
-                lecture = await session.scalar(select(Lecture).where(Lecture.id == lecture_id))
-                job = await session.scalar(select(ProcessingJob).where(ProcessingJob.id == job_id)) if job_id else None
-                if lecture is not None:
-                    await self._commit_progress(
-                        session,
-                        lecture,
-                        progress=100,
-                        status=LectureStatus.failed,
-                        error_message=str(exc),
-                        job=job,
-                        job_status=ProcessingJobStatus.failed,
-                        job_stage="failed",
-                        job_details={"failed_stage": job.stage if job is not None else "rebuild"},
-                        finished_job=True,
-                    )
-                logger.exception("rebuild_background_failed lecture=%s error=%s", lecture_id, exc)
+            await self.rebuild_structure_from_existing_transcript(session, lecture_id, job_id=job_id)
 
     def launch_rebuild_structure(self, lecture_id, job_id=None) -> None:
         asyncio.run(self.run_rebuild_structure(lecture_id, job_id))
@@ -431,6 +402,17 @@ class ProcessingService:
                 job_type=ProcessingJobType.upload_pipeline,
                 details={"source": "manual_resume"},
             )
+        if latest_job.status == ProcessingJobStatus.running and latest_job.lease_expires_at and latest_job.lease_expires_at > datetime.now(timezone.utc):
+            return latest_job
+        latest_job.attempts = 0
+        latest_job.lease_token = None
+        latest_job.lease_expires_at = None
+        latest_job.finished_at = None
+        outbox = await session.get(JobOutbox, latest_job.id)
+        if outbox is None:
+            session.add(JobOutbox(job_id=latest_job.id, next_attempt_at=datetime.now(timezone.utc)))
+        else:
+            outbox.next_attempt_at = datetime.now(timezone.utc)
         latest_job.status = ProcessingJobStatus.queued
         latest_job.error_message = None
         latest_job.last_heartbeat_at = datetime.now(timezone.utc)

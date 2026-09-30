@@ -1,3 +1,4 @@
+from app.models.job_outbox import JobOutbox
 from app.models.claim import Claim, ClaimEvidence
 from app.models.lecture_content import LectureContentItem
 from app.models.processing_job import ProcessingJob
@@ -22,3 +23,5 @@ __all__ = [
     "TopicSegment",
     "TranscriptSegment",
 ]
+
+from app.models.submission import SubmissionKey

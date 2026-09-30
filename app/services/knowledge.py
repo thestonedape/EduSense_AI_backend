@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 
 from sqlalchemy import delete, select
@@ -93,7 +94,7 @@ class KnowledgeService:
                     )
                 )
 
-        embeddings = self.embedding_service.encode([content for _, content, _ in content_blocks]) if content_blocks else []
+        embeddings = await asyncio.to_thread(self.embedding_service.encode, [content for _, content, _ in content_blocks]) if content_blocks else []
         for (topic, content, metadata), embedding in zip(content_blocks, embeddings, strict=True):
             session.add(
                 KnowledgeChunk(
@@ -114,7 +115,7 @@ class KnowledgeService:
         lecture_id=None,
         approved_only: bool = False,
     ) -> list[KnowledgeChunk]:
-        query_embedding = self.embedding_service.encode([query])[0]
+        query_embedding = (await asyncio.to_thread(self.embedding_service.encode, [query]))[0]
         stmt = select(KnowledgeChunk)
         if topic:
             stmt = stmt.where(KnowledgeChunk.topic.ilike(f"%{topic}%"))
