@@ -74,10 +74,14 @@ Free hosting sleeps and has quotas. Recovery is implemented; uninterrupted uptim
 | HNSW gate | exact scan only | recall@10 = 1.0 (global and lecture-scoped) on 5,000 synthetic 384-d vectors; 3.9 ms vs 5.6 ms median ([artifact](artifacts/hnsw-synthetic.json)) | measured locally, synthetic; not yet run on live corpus |
 | 100-job ledger/container workload | not measured | 100/100 completed, 0 duplicate rows, 0 OOM; 160 MiB total cgroup peak; ledger commit p95 11.7 ms, completion p95 56.9 s including queue wait ([artifact](artifacts/ledger-container-512m.json)) | measured locally, fixture providers; warm host file cache; not upload/Deepgram/RAG performance |
 | Real transcription/RAG throughput, p95, cache hit | not measured | not measured | — |
-| Live demo | existing Render deployment | not yet redeployed | pending live database connection repair + deploy (free TLS Redis provisioned and ping verified) |
+| Live database | 2 lectures / 58 knowledge chunks, migration 20260401_0005 | backup restored and additive migrations checked on isolated PostgreSQL 17; live migration 20260930_0007, same 2 / 58 rows, both existing jobs completed | verified against live database; no lecture content published |
+| Private storage adapter | not tested | authenticated upload/read/delete round-trips passed for both buckets; public access denied ([artifact](artifacts/live-storage-check.json)) | verified live with disposable synthetic fixtures |
+| Live demo | existing Render deployment | not yet redeployed | database connection restored; queue credential configuration and coordinated deployment pending |
 
 Reproduce the kill test (isolated `*_test` database, disposable Redis): `WORKER_LEASE_SECONDS=6 python scripts/chaos_worker_kill.py --jobs 10 --kills 10`. Only provider calls are fixtures; leases, heartbeats, outbox, checkpoints and stage writes are production code.
 
 Do not turn unmeasured rows into resume numbers. This repository upgrade does not change resume or portfolio copy.
 
 The ledger workload uses `scripts/benchmark_ledger.py --container-database <isolated *_test URL visible inside Docker> --container-redis <disposable Redis URL>`. Set host `DATABASE_URL` to the same disposable database, migrate it first, and build the image passed via `--image`. It starts API plus a fixture arq worker, commits 100 jobs, checks durable outputs and records total cgroup peak. The provider validation stage sleeps 10 ms. This is a burst/queue test, not provider throughput; API uploads and Q&A/cache latency are not measured. A previous run before host caches warmed recorded 234 MB total peak; neither run validates memory during real transcription/RAG. Never deploy the fixture worker.
+
+`python scripts/verify_storage.py --run` checks the actual private Supabase adapter using fresh UUID fixture keys. It uploads, downloads, checks exact bytes and unauthenticated denial, then deletes only those newly created test objects. Credentials and lecture content are excluded from its output. The live corpus has only 58 vectors, below the 500-vector HNSW validation threshold, so exact search remains active.
