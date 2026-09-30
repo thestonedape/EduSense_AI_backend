@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 
 import logging
 from pathlib import Path
@@ -52,15 +53,15 @@ class ReferenceProcessingService:
                 "reference_status": "missing_lecture_text",
             }
 
-        lecture_embedding = self.embedding_service.encode([lecture_text])[0]
+        lecture_embedding = (await asyncio.to_thread(self.embedding_service.encode, [lecture_text]))[0]
         chunk_count = 0
         matched = 0
         skipped = 0
 
         for reference_file in reference_files:
             try:
-                resolved_path = self.storage_service.ensure_local_path(reference_file.storage_path, reference_file.details)
-                reference_text = self.extract_text(resolved_path, reference_file.file_type)
+                resolved_path = await asyncio.to_thread(self.storage_service.ensure_local_path, reference_file.storage_path, reference_file.details)
+                reference_text = await asyncio.to_thread(self.extract_text, resolved_path, reference_file.file_type)
             except Exception as exc:
                 logger.warning(
                     "reference_extract_failed lecture=%s file=%s error=%s",
@@ -84,7 +85,7 @@ class ReferenceProcessingService:
                 skipped += 1
                 continue
 
-            reference_embedding = self.embedding_service.encode([reference_text])[0]
+            reference_embedding = (await asyncio.to_thread(self.embedding_service.encode, [reference_text]))[0]
             similarity = self.cosine_similarity(lecture_embedding, reference_embedding)
             if similarity < self.match_threshold:
                 logger.info(
@@ -140,7 +141,7 @@ class ReferenceProcessingService:
                     )
                 )
 
-            embeddings = self.embedding_service.encode([content for _, content, _ in content_blocks]) if content_blocks else []
+            embeddings = await asyncio.to_thread(self.embedding_service.encode, [content for _, content, _ in content_blocks]) if content_blocks else []
             for (topic, content, metadata), embedding in zip(content_blocks, embeddings, strict=True):
                 session.add(
                     KnowledgeChunk(

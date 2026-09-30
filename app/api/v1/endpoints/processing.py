@@ -1,7 +1,7 @@
 import asyncio
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,6 +11,7 @@ from app.models.lecture import Lecture, LectureStatus
 from app.models.processing_job import ProcessingJob, ProcessingJobType
 from app.schemas.lecture import ProcessingItem, ProcessingJobSnapshot
 from app.services.lecture_accuracy import derive_accuracy_score
+from app.workers.queue import dispatch_now
 from app.services.processing import ProcessingService
 
 
@@ -76,8 +77,11 @@ async def to_processing_item(session: AsyncSession, lecture: Lecture) -> Process
 
 
 @router.get("/processing", response_model=list[ProcessingItem])
-async def list_processing_jobs(session: AsyncSession = Depends(db_session_dep)) -> list[ProcessingItem]:
-    lectures = (await session.scalars(select(Lecture).order_by(Lecture.created_at.desc()))).all()
+async def list_processing_jobs(session: AsyncSession = Depends(db_session_dep), limit: int = Query(50, ge=1, le=100), offset: int = Query(0, ge=0, le=100000), status: LectureStatus | None = None, course: str | None = Query(None, max_length=255)) -> list[ProcessingItem]:
+    query = select(Lecture)
+    if status: query = query.where(Lecture.status == status)
+    if course: query = query.where(Lecture.course == course)
+    lectures = (await session.scalars(query.order_by(Lecture.created_at.desc(), Lecture.id).offset(offset).limit(limit))).all()
     if not lectures:
         return []
 
@@ -150,7 +154,8 @@ async def rebuild_processing_structure(
     await session.commit()
     await session.refresh(lecture)
 
-    asyncio.create_task(processing_service.run_rebuild_structure(lecture_id, job.id))
+    # Committed job/outbox: dispatch now; reconciliation retries if Redis is unavailable.
+    await dispatch_now(job.id)
     return await to_processing_item(session, lecture)
 
 
@@ -167,9 +172,7 @@ async def resume_processing_job(
     job = await processing_service.resume_latest_job(session, lecture)
     await session.refresh(lecture)
 
-    if job.job_type == ProcessingJobType.rebuild_structure:
-        asyncio.create_task(processing_service.run_rebuild_structure(lecture_id, job.id))
-    else:
-        asyncio.create_task(processing_service.run_pipeline(lecture_id, job.id))
+    # Committed job/outbox: dispatch now; reconciliation retries if Redis is unavailable.
+    await dispatch_now(job.id)
 
     return await to_processing_item(session, lecture)

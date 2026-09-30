@@ -32,6 +32,7 @@ class Lecture(Base):
     faculty_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
+    submission_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
     course: Mapped[str] = mapped_column(String(255), nullable=False)
     module: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[LectureStatus] = mapped_column(Enum(LectureStatus), default=LectureStatus.pending, nullable=False)

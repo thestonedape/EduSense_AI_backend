@@ -1,0 +1,40 @@
+name: Backend verification
+on: [push, pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: edusense_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres -d edusense_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/edusense_test
+      SDE_TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/edusense_test
+      SYNC_DATABASE_URL: postgresql+psycopg://postgres:postgres@localhost:5432/edusense_test
+      REDIS_URL: redis://localhost:6379/0
+      INTERNAL_API_KEY: ci-test-key
+      AUTO_BOOTSTRAP_SCHEMA: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install -r requirements.dev.txt
+      - run: alembic upgrade head
+      - run: alembic downgrade 20260401_0005 && alembic upgrade head
+      - run: python -m pytest tests -q
+      - run: docker build -t edusense:${{ github.sha }} .
+      - name: Deploy verified revision
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DEPLOY_HOOK" ]; then curl --fail --silent --show-error -X POST "$DEPLOY_HOOK"; else echo 'No deployment hook configured; deployment not triggered.'; fi

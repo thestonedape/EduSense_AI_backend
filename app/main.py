@@ -22,8 +22,6 @@ logging.getLogger("app.main").info("cors_origins=%s", settings.cors_origins_list
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await initialize_database()
-    recovered_jobs = await ProcessingService().recover_orphaned_jobs()
-    logging.getLogger("app.main").info("processing_recovery_complete recovered_jobs=%s", recovered_jobs)
     yield
 
 
@@ -44,35 +42,34 @@ app.add_middleware(
 app.include_router(router, prefix=settings.api_prefix)
 
 
-@app.middleware("http")
-async def request_timing_middleware(request: Request, call_next):
-    started_at = perf_counter()
-    try:
-        response = await call_next(request)
-    except Exception:
-        duration_ms = round((perf_counter() - started_at) * 1000, 1)
-        logging.getLogger("app.http").exception(
-            "request_failed method=%s path=%s duration_ms=%s",
-            request.method,
-            request.url.path,
-            duration_ms,
-        )
-        raise
-
-    duration_ms = round((perf_counter() - started_at) * 1000, 1)
-    if duration_ms >= 250 or response.status_code >= 400:
-        logger = logging.getLogger("app.http")
-        log_method = logger.warning if response.status_code >= 400 else logger.info
-        log_method(
-            "request_timing method=%s path=%s status=%s duration_ms=%s",
-            request.method,
-            request.url.path,
-            response.status_code,
-            duration_ms,
-        )
-    return response
-
+from app.core.observability import install_observability
+install_observability(app)
 
 @app.get("/health", tags=["health"])
 async def health_check() -> dict[str, str]:
     return {"status": "ok"}
+
+@app.get('/ready', tags=['health'])
+async def readiness():
+    from fastapi import HTTPException
+    from sqlalchemy import text
+    from arq.connections import create_pool
+    from app.db.session import SessionLocal
+    from app.workers.queue import WorkerSettings
+    pool = None
+    try:
+        async with SessionLocal() as session:
+            await session.execute(text('SELECT 1 FROM job_outbox LIMIT 1'))
+        pool = await create_pool(WorkerSettings.redis_settings)
+        await pool.ping()
+        if not await pool.get('edusense:worker:ready'):
+            raise RuntimeError('Worker unavailable')
+        if settings.environment == 'production' and not settings.use_supabase_storage:
+            raise RuntimeError('Durable storage unavailable')
+        if not settings.internal_api_key:
+            raise RuntimeError('Authentication unavailable')
+        return {'status':'ready','queue':'redis','ledger':'postgresql'}
+    except Exception:
+        raise HTTPException(503, 'Processing dependencies are not ready') from None
+    finally:
+        if pool: await pool.aclose()

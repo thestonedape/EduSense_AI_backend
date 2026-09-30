@@ -50,19 +50,21 @@ class StorageService:
         }
         if content_type:
             headers["Content-Type"] = content_type
+        privacy = requests.get(f"{settings.supabase_url.rstrip('/')}/storage/v1/bucket/{bucket}", headers=headers, timeout=15)
+        privacy.raise_for_status()
+        if privacy.json().get('public') is not False:
+            raise StorageServiceError('Lecture storage bucket must be private')
         with local_path.open("rb") as payload:
             response = requests.post(url, headers=headers, data=payload, timeout=60)
         if not response.ok:
-            detail = response.text.strip() or response.reason or "Supabase storage upload failed."
             raise StorageServiceError(
-                f"Supabase storage upload failed for bucket '{bucket}' and object '{object_path}'. "
-                f"Status {response.status_code}. Response: {detail}"
+                f"Supabase storage upload failed. Status {response.status_code}."
             )
         return {
             "storage_backend": "supabase",
             "supabase_bucket": bucket,
             "supabase_object_path": object_path,
-            "supabase_public_url": f"{settings.supabase_url.rstrip('/')}/storage/v1/object/public/{bucket}/{object_path}",
+            "storage_visibility": "private",
         }
 
     def _download_from_supabase(self, *, bucket: str, object_path: str, destination: Path) -> Path:
@@ -71,10 +73,12 @@ class StorageService:
             "Authorization": f"Bearer {settings.supabase_service_role_key}",
             "apikey": settings.supabase_service_role_key,
         }
-        response = requests.get(url, headers=headers, timeout=60)
-        response.raise_for_status()
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(response.content)
+        with requests.get(url, headers=headers, timeout=60, stream=True) as response:
+            response.raise_for_status()
+            with destination.open('wb') as output:
+                for chunk in response.iter_content(1024 * 1024):
+                    output.write(chunk)
         return destination.resolve()
 
     def _delete_from_supabase(self, *, bucket: str, object_path: str) -> None:
@@ -103,7 +107,8 @@ class StorageService:
         if not settings.use_supabase_storage:
             raise RuntimeError("Supabase storage fallback requested but Supabase storage is not configured.")
 
-        destination = Path(cached_path_value)
+        # A worker on another host must not reuse the API host's absolute path.
+        destination = self.upload_dir / Path(object_path).name
         return str(self._download_from_supabase(bucket=bucket, object_path=object_path, destination=destination))
 
     async def _persist_file(self, file: UploadFile, *, bucket: str, prefix: str) -> StoredFileResult:
@@ -117,14 +122,19 @@ class StorageService:
         }
         if settings.use_supabase_storage:
             object_path = f"{prefix}/{stored_name}"
-            supabase_metadata = await asyncio.to_thread(
-                self._upload_to_supabase,
-                local_path=local_path,
-                bucket=bucket,
-                object_path=object_path,
-                content_type=file.content_type,
-            )
+            try:
+                supabase_metadata = await asyncio.to_thread(
+                    self._upload_to_supabase,
+                    local_path=local_path,
+                    bucket=bucket,
+                    object_path=object_path,
+                    content_type=file.content_type,
+                )
+            except Exception:
+                local_path.unlink(missing_ok=True)
+                raise
             metadata.update(supabase_metadata)
+            local_path.unlink(missing_ok=True)
         return StoredFileResult(
             stored_name=stored_name,
             local_path=str(local_path),
