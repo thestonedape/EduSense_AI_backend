@@ -4,7 +4,9 @@ from time import perf_counter
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app.api.deps import demo_write_blocked
 from app.api.routes import router
 from app.core.config import get_settings
 from app.db.init_db import initialize_database
@@ -30,6 +32,14 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+
+# Registered before CORS so CORS stays outermost and the 403 still carries CORS headers.
+@app.middleware("http")
+async def demo_read_only(request: Request, call_next):
+    if demo_write_blocked(request.method, request.headers.get("authorization")):
+        return JSONResponse({"detail": "Demo mode is read-only."}, status_code=403)
+    return await call_next(request)
+
 
 app.add_middleware(
     CORSMiddleware,

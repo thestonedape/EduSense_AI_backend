@@ -24,9 +24,23 @@ def verify_token(authorization: str | None) -> dict:
         if not hmac.compare_digest(signature, expected): raise ValueError()
         claims = json.loads(base64.urlsafe_b64decode(payload + '=' * (-len(payload) % 4)))
         if claims['exp'] <= time.time() or claims['exp'] > time.time() + 360 or claims['role'] not in {'admin', 'student'} or not isinstance(claims['email'], str) or not claims['email'].strip(): raise ValueError()
+        if not isinstance(claims.get('demo', False), bool): raise ValueError()
         return claims
     except (ValueError, KeyError, TypeError):
         raise HTTPException(401, 'Unauthorized') from None
+
+SAFE_METHODS = {'GET', 'HEAD', 'OPTIONS'}
+
+
+def demo_write_blocked(method: str, authorization: str | None) -> bool:
+    """True when a validly signed demo token attempts a write; demo identities are read-only."""
+    if method.upper() in SAFE_METHODS or not authorization:
+        return False
+    try:
+        return verify_token(authorization).get('demo') is True
+    except HTTPException:
+        return False  # invalid tokens are rejected by the route's own auth dependency
+
 
 async def authenticated_dep(authorization: str | None = Header(default=None)):
     return verify_token(authorization)
