@@ -11,8 +11,8 @@ from starlette.datastructures import UploadFile, Headers
 from app.api import deps
 from app.services.idempotency import fingerprint_upload, scoped_key
 
-def token(role='student', exp=None):
-    payload=base64.urlsafe_b64encode(json.dumps({'email':'student@example.test','role':role,'exp':exp or time.time()+300}).encode()).rstrip(b'=')
+def token(role='student', exp=None, **extra):
+    payload=base64.urlsafe_b64encode(json.dumps({'email':'student@example.test','role':role,'exp':exp or time.time()+300,**extra}).encode()).rstrip(b'=')
     signature=base64.urlsafe_b64encode(hmac.digest(b'test-secret', payload,'sha256')).rstrip(b'=')
     return 'Bearer '+(payload+b'.'+signature).decode()
 
@@ -46,3 +46,19 @@ def test_fingerprint_repeat_change_and_course_scope():
     assert first!=asyncio.run(compute('course-b',b'lecture'))
     assert first!=asyncio.run(compute('course-a',b'changed'))
     assert scoped_key('course-a','abc')!=scoped_key('course-b','abc')
+
+@pytest.mark.parametrize('role',['admin','student'])
+def test_demo_tokens_are_read_only(role):
+    demo=token(role,demo=True)
+    assert deps.verify_token(demo)['demo'] is True
+    for method in ('GET','HEAD','OPTIONS'): assert not deps.demo_write_blocked(method,demo)
+    for method in ('POST','PUT','PATCH','DELETE'): assert deps.demo_write_blocked(method,demo)
+
+def test_real_and_invalid_tokens_are_not_demo_blocked():
+    assert not deps.demo_write_blocked('POST',token('admin'))
+    assert not deps.demo_write_blocked('POST','Bearer bad')
+    assert not deps.demo_write_blocked('POST',None)
+
+def test_malformed_demo_claim_rejected():
+    with pytest.raises(HTTPException) as error: deps.verify_token(token('admin',demo='yes'))
+    assert error.value.status_code==401
