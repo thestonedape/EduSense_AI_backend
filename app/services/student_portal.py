@@ -88,6 +88,7 @@ class StudentPortalService:
         session: AsyncSession,
         *,
         lecture_ids: list[uuid.UUID] | None = None,
+        subject_key: str | None = None,
         include_reference_files: bool = True,
         include_topic_segments: bool = True,
         include_knowledge_chunks: bool = True,
@@ -134,6 +135,8 @@ class StudentPortalService:
         )
         if lecture_ids is not None:
             stmt = stmt.where(Lecture.id.in_(lecture_ids))
+        if subject_key is not None:
+            stmt = stmt.where(Lecture.subject_key == subject_key)
 
         load_options = []
         if include_reference_files:
@@ -377,27 +380,32 @@ class StudentPortalService:
         return subjects
 
     async def get_subject(self, session: AsyncSession, subject_id: str) -> StudentSubjectDetail | None:
-        # Most uploaded lectures have an indexed subject_key. Preserve the
-        # legacy derived-slug fallback for older records without that column.
-        ids = list(await session.scalars(
-            select(Lecture.id).where(Lecture.subject_key == subject_id)
-        ))
-        if not ids:
-            summaries = await self._validated_lecture_bundles(
+        # Normal path: one scoped query with counts; summaries are stored on
+        # completed lectures. Never hydrate every knowledge chunk to show cards.
+        subject_bundles = await self._validated_lecture_bundles(
+            session,
+            subject_key=subject_id,
+            include_reference_files=False,
+            include_topic_segments=False,
+            include_knowledge_chunks=False,
+        )
+        if not subject_bundles:
+            # Legacy records may predate subject_key; resolve their derived
+            # slug without loading sensitive transcript or knowledge content.
+            legacy = await self._validated_lecture_bundles(
                 session,
                 include_reference_files=False,
                 include_topic_segments=False,
                 include_knowledge_chunks=False,
             )
-            ids = [bundle.lecture.id for bundle in summaries if self._subject_id(bundle.lecture) == subject_id]
-        bundles = await self._validated_lecture_bundles(
-            session,
-            lecture_ids=ids,
-            include_reference_files=False,
-            include_topic_segments=False,
-            include_knowledge_chunks=True,
-        )
-        subject_bundles = [bundle for bundle in bundles if self._subject_id(bundle.lecture) == subject_id]
+            subject_bundles = [
+                bundle for bundle in legacy if self._subject_id(bundle.lecture) == subject_id
+            ]
+        else:
+            subject_bundles = [
+                bundle for bundle in subject_bundles
+                if self._subject_id(bundle.lecture) == subject_id
+            ]
         if not subject_bundles:
             return None
 
