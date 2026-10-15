@@ -284,60 +284,57 @@ class StudentPortalService:
             key_takeaways=[],
         )
 
-    async def get_dashboard(self, session: AsyncSession, *, student_email: str) -> StudentDashboardResponse:
+    async def get_dashboard(
+        self, session: AsyncSession, *, student_email: str,
+        include_stats: bool = True,
+    ) -> StudentDashboardResponse:
         started_at = perf_counter()
-        stats = await self.persistence.get_dashboard_stats(session, student_email=student_email)
-        stats_duration = (perf_counter() - started_at) * 1000
-        recent_progress = await self.persistence.get_recent_progress(session, student_email=student_email)
-        progress_duration = (perf_counter() - started_at) * 1000
-        recent_ids = [progress.lecture_id for progress in recent_progress]
-        lecture_map = {
-            bundle.lecture.id: bundle
-            for bundle in await self._validated_lecture_bundles(
-                session,
-                lecture_ids=recent_ids or None,
-                include_reference_files=False,
-                include_topic_segments=False,
-                include_knowledge_chunks=False,
+        # Homepage needs recent lectures but does not display the four
+        # statistics. Avoid an unnecessary international DB round trip there.
+        if include_stats:
+            stats = await self.persistence.get_dashboard_stats(
+                session, student_email=student_email,
             )
-        }
-        bundle_duration = (perf_counter() - started_at) * 1000
-        recent_lectures: list[StudentLectureSummary] = []
+        else:
+            stats = {
+                "tracked_lectures": 0, "completed_lectures": 0,
+                "quiz_attempts": 0, "saved_chats": 0,
+            }
+        stats_ms = (perf_counter() - started_at) * 1000
 
-        for progress in recent_progress:
-            bundle = lecture_map.get(progress.lecture_id)
-            if bundle is None:
-                continue
-            recent_lectures.append(
-                StudentLectureSummary(
-                    id=bundle.lecture.id,
-                    subject_id=self._subject_id(bundle.lecture),
-                    lecture_name=bundle.lecture.lecture_name,
-                    lecture_number=bundle.lecture.lecture_number,
-                    lecture_date=bundle.lecture.lecture_date.isoformat() if bundle.lecture.lecture_date else None,
-                    faculty_name=bundle.lecture.faculty_name,
-                    summary=self._lecture_summary(bundle.lecture, reference_count=bundle.reference_count),
-                    topic_count=bundle.topic_count,
-                    reference_count=bundle.reference_count,
-                    validation_source=self._validation_source(bundle.lecture, reference_count=bundle.reference_count),
-                    progress_status=progress.status.value,
-                    last_opened_at=progress.last_opened_at.isoformat() if progress.last_opened_at else None,
-                )
+        # One scoped join instead of "progress query + lecture bundles query".
+        recent_rows = await self.persistence.get_recent_lecture_rows(
+            session, student_email=student_email,
+        )
+        recent_lectures = [
+            StudentLectureSummary(
+                id=lecture.id,
+                subject_id=self._subject_id(lecture),
+                lecture_name=lecture.lecture_name,
+                lecture_number=lecture.lecture_number,
+                lecture_date=lecture.lecture_date.isoformat() if lecture.lecture_date else None,
+                faculty_name=lecture.faculty_name,
+                summary=self._lecture_summary(lecture, reference_count=int(reference_count)),
+                topic_count=int(topic_count),
+                reference_count=int(reference_count),
+                validation_source=self._validation_source(
+                    lecture, reference_count=int(reference_count),
+                ),
+                progress_status=progress_status.value,
+                last_opened_at=last_opened_at.isoformat() if last_opened_at else None,
             )
-
+            for lecture, progress_status, last_opened_at, reference_count, topic_count
+            in recent_rows
+        ]
         response = StudentDashboardResponse(
             stats=StudentDashboardStats(**stats),
             recent_lectures=recent_lectures,
         )
-        total_duration = (perf_counter() - started_at) * 1000
-        if total_duration >= 250:
+        total_ms = (perf_counter() - started_at) * 1000
+        if total_ms >= 250:
             logger.info(
-                "student_dashboard_timing student=%s stats_ms=%.1f progress_ms=%.1f bundles_ms=%.1f total_ms=%.1f recent_count=%s",
-                student_email,
-                stats_duration,
-                max(progress_duration - stats_duration, 0),
-                max(bundle_duration - progress_duration, 0),
-                total_duration,
+                "student_dashboard_timing stats_included=%s stats_ms=%.1f recent_ms=%.1f total_ms=%.1f recent_count=%s",
+                include_stats, stats_ms, max(total_ms - stats_ms, 0), total_ms,
                 len(recent_lectures),
             )
         return response
