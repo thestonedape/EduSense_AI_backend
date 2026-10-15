@@ -29,6 +29,7 @@ def fixture_service():
 async def test_global_doubt_uses_light_eligibility_and_allowlist():
     svc, lid = fixture_service()
     svc.knowledge_service.search = AsyncMock(return_value=[])
+    svc.openrouter.api_key = ""
     result = await svc.answer_global_question(
         AsyncMock(), message="Explain quicksort", subject_id="cs-101",
         student_email="student@example.com",
@@ -53,7 +54,7 @@ async def test_doubt_sync_model_runs_without_blocking_asyncio():
     )
     svc.knowledge_service.search = AsyncMock(return_value=[chunk])
     svc.persistence.append_chat_exchange = AsyncMock()
-    svc.openrouter.is_configured = True
+    svc.openrouter.api_key = "test-key"
 
     def slow_provider(**kwargs):
         time.sleep(0.15)
