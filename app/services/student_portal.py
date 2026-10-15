@@ -527,9 +527,18 @@ class StudentPortalService:
         student_email: str,
         subject_id: str | None = None,
     ) -> StudentDoubtResponse:
-        bundles = await self._validated_lecture_bundles(session)
+        started_at = perf_counter()
+        # Only need validation metadata for eligibility; avoid materializing all
+        # knowledge chunks, transcript segments and reference relationships.
+        bundles = await self._validated_lecture_bundles(
+            session,
+            include_reference_files=False,
+            include_topic_segments=False,
+            include_knowledge_chunks=False,
+        )
         if subject_id:
             bundles = [bundle for bundle in bundles if self._subject_id(bundle.lecture) == subject_id]
+        eligibility_ms = (perf_counter() - started_at) * 1000
 
         scope_label = (
             bundles[0].lecture.subject_name or bundles[0].lecture.subject_code or "the selected subject"
@@ -559,7 +568,9 @@ class StudentPortalService:
             query=message,
             limit=max(10, min(len(bundles) * 2, 18)),
             approved_only=True,
+            lecture_ids=list(lecture_lookup),
         )
+        retrieval_ms = (perf_counter() - started_at) * 1000 - eligibility_ms
         lecture_chunks = [
             chunk
             for chunk in search_results
@@ -590,7 +601,8 @@ class StudentPortalService:
         answer_payload = None
         if self.openrouter.is_configured:
             try:
-                answer_payload = self.openrouter.answer_student_doubt(
+                answer_payload = await asyncio.to_thread(
+                    self.openrouter.answer_student_doubt,
                     question=message,
                     subject_context=scope_label,
                     context_items=[
@@ -603,7 +615,9 @@ class StudentPortalService:
                     ],
                 )
             except Exception:
+                logger.warning("student_doubt_model_failed", exc_info=True)
                 answer_payload = None
+        model_ms = (perf_counter() - started_at) * 1000 - eligibility_ms - retrieval_ms
 
         if answer_payload is None:
             response = (
@@ -634,6 +648,11 @@ class StudentPortalService:
             citations=citations,
         )
 
+        logger.info(
+            "student_doubt_timing eligibility_ms=%.1f retrieval_ms=%.1f model_ms=%.1f total_ms=%.1f cited_chunks=%d",
+            eligibility_ms, retrieval_ms, model_ms,
+            (perf_counter() - started_at) * 1000, len(lecture_chunks),
+        )
         return StudentDoubtResponse(
             response=response,
             citations=citations,
