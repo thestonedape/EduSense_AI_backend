@@ -406,6 +406,19 @@ class StudentPortalService:
         if not subject_bundles:
             return None
 
+        # Legacy lectures can lack the stored summary; only those need
+        # knowledge chunks for their existing approved-summary fallback.
+        missing_summaries = [
+            bundle.lecture.id for bundle in subject_bundles
+            if not (bundle.lecture.summary or "").strip()
+        ]
+        if missing_summaries:
+            await session.scalars(
+                select(Lecture)
+                .where(Lecture.id.in_(missing_summaries))
+                .options(selectinload(Lecture.knowledge_chunks))
+            )
+
         lecture = subject_bundles[0].lecture
         subject = StudentSubjectSummary(
             id=subject_id,
