@@ -114,13 +114,18 @@ class KnowledgeService:
         limit: int = 10,
         lecture_id=None,
         approved_only: bool = False,
+        lecture_ids=None,
     ) -> list[KnowledgeChunk]:
+        if lecture_ids is not None and not lecture_ids:
+            return []
         query_embedding = (await asyncio.to_thread(self.embedding_service.encode, [query]))[0]
         stmt = select(KnowledgeChunk)
         if topic:
             stmt = stmt.where(KnowledgeChunk.topic.ilike(f"%{topic}%"))
         if lecture_id is not None:
             stmt = stmt.where(KnowledgeChunk.lecture_id == lecture_id)
+        if lecture_ids is not None:
+            stmt = stmt.where(KnowledgeChunk.lecture_id.in_(lecture_ids))
         if approved_only:
             stmt = stmt.where(KnowledgeChunk.details["student_visible"].astext == "true")
 
