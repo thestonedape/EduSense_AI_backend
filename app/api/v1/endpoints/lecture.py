@@ -26,6 +26,7 @@ from app.schemas.transcript import (
 )
 from app.services.lecture_accuracy import derive_accuracy_score
 from app.services.knowledge import KnowledgeService
+from app.services import catalog_cache
 
 
 router = APIRouter()
@@ -218,5 +219,6 @@ async def update_topic_approval(
 
     await knowledge_service.sync_topic_visibility(session, topic)
     await session.commit()
+    await catalog_cache.invalidate_subjects()
     await session.refresh(topic)
     return TopicSegmentResponse.model_validate(topic)
