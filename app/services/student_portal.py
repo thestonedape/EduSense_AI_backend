@@ -600,6 +600,10 @@ class StudentPortalService:
 
         answer_payload = None
         if self.openrouter.is_configured:
+            # Release the read-only DB connection before a potentially slow
+            # remote LLM request; persistence starts a fresh transaction below.
+            # SessionLocal uses expire_on_commit=False for loaded chunk metadata.
+            await session.commit()
             try:
                 answer_payload = await asyncio.to_thread(
                     self.openrouter.answer_student_doubt,
