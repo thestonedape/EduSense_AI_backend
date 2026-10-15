@@ -1,7 +1,7 @@
 """Navigation-path regressions: cache privacy and scoped database reads."""
 import asyncio
 import uuid
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from sqlalchemy.dialects import postgresql
@@ -75,6 +75,7 @@ async def test_empty_lecture_id_list_short_circuits_database():
 async def test_scoped_aggregations_use_lecture_ids():
     svc = StudentPortalService()
     session = AsyncMock()
+    session.execute.return_value = MagicMock()
     session.execute.return_value.all.return_value = []
     target = uuid.uuid4()
     result = await svc._validated_lecture_bundles(
