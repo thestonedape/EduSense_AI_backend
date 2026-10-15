@@ -6,6 +6,11 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.claim import Claim, ClaimVerdict
+from app.models.lecture import Lecture, LectureStatus
+from app.models.reference_file import ReferenceFile
+from app.models.transcript import TopicSegment
+
 from app.models.student import (
     ChatMessageRole,
     StudentChatMessage,
@@ -61,6 +66,57 @@ class StudentPersistenceService:
             .limit(6)
         )
         return list(result)
+
+    async def get_recent_lecture_rows(
+        self, session: AsyncSession, *, student_email: str,
+    ) -> list:
+        """One query for recently opened *validated* lectures and their counts.
+
+        Fetch only the six most recent entries for the authenticated student.
+        Do not load knowledge chunks, transcripts or other students' activity.
+        The outer validation matches the student lecture endpoint's completed
+        status and exclusion of lectures with false claims.
+        """
+        recent = (
+            select(
+                StudentLectureProgress.lecture_id.label("lecture_id"),
+                StudentLectureProgress.status.label("progress_status"),
+                StudentLectureProgress.last_opened_at.label("last_opened_at"),
+            )
+            .where(StudentLectureProgress.user_email == student_email)
+            .order_by(StudentLectureProgress.last_opened_at.desc())
+            .limit(6)
+            .subquery()
+        )
+        reference_count = (
+            select(func.count(ReferenceFile.id))
+            .where(ReferenceFile.lecture_id == Lecture.id)
+            .correlate(Lecture)
+            .scalar_subquery()
+        )
+        topic_count = (
+            select(func.count(TopicSegment.id))
+            .where(TopicSegment.lecture_id == Lecture.id)
+            .correlate(Lecture)
+            .scalar_subquery()
+        )
+        has_false_claim = (
+            select(Claim.id)
+            .where(Claim.lecture_id == Lecture.id, Claim.verdict == ClaimVerdict.false)
+            .correlate(Lecture)
+            .exists()
+        )
+        rows = await session.execute(
+            select(
+                Lecture, recent.c.progress_status, recent.c.last_opened_at,
+                reference_count, topic_count,
+            )
+            .join(recent, recent.c.lecture_id == Lecture.id)
+            .where(Lecture.status == LectureStatus.completed)
+            .where(~has_false_claim)
+            .order_by(recent.c.last_opened_at.desc())
+        )
+        return list(rows.all())
 
     async def get_dashboard_stats(self, session: AsyncSession, *, student_email: str) -> dict[str, int]:
         tracked_subquery = (
