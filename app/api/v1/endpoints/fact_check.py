@@ -10,6 +10,7 @@ from app.models.claim import Claim, ClaimStatus
 from app.models.lecture import Lecture
 from app.schemas.fact_check import ClaimResponse, EvidenceResponse, FactCheckResponse, FactCheckUpdateRequest
 from app.services.fact_check import FactCheckService
+from app.services import catalog_cache
 
 
 router = APIRouter()
@@ -85,6 +86,7 @@ async def update_fact_check(payload: FactCheckUpdateRequest, session: AsyncSessi
         claim.rationale = payload.rationale
 
     await session.commit()
+    await catalog_cache.invalidate_subjects()
     refreshed_claim = await session.scalar(
         select(Claim).where(Claim.id == payload.claim_id).options(selectinload(Claim.evidence_items))
     )
