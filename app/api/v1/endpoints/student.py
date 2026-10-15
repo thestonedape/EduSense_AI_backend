@@ -32,8 +32,11 @@ persistence = StudentPersistenceService()
 async def get_student_dashboard(
     student_email: str = Depends(trusted_student_email_dep),
     session: AsyncSession = Depends(db_session_dep),
+    include_stats: bool = Query(default=True),
 ) -> StudentDashboardResponse:
-    return await service.get_dashboard(session, student_email=student_email)
+    return await service.get_dashboard(
+        session, student_email=student_email, include_stats=include_stats,
+    )
 
 
 @router.get("/subjects", response_model=list[StudentSubjectSummary])
