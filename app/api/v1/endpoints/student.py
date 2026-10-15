@@ -18,6 +18,7 @@ from app.schemas.student import (
     StudentSubjectDetail,
     StudentSubjectSummary,
 )
+from app.services import catalog_cache
 from app.services.student_portal import StudentPortalService
 from app.services.student_persistence import StudentPersistenceService
 
@@ -37,7 +38,12 @@ async def get_student_dashboard(
 
 @router.get("/subjects", response_model=list[StudentSubjectSummary])
 async def list_student_subjects(session: AsyncSession = Depends(db_session_dep)) -> list[StudentSubjectSummary]:
-    return await service.list_subjects(session)
+    cached = await catalog_cache.read_subjects()
+    if cached is not None:
+        return cached
+    subjects = await service.list_subjects(session)
+    await catalog_cache.write_subjects(subjects)
+    return subjects
 
 
 @router.get("/subjects/{subject_id}", response_model=StudentSubjectDetail)

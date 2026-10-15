@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 from time import perf_counter
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -92,22 +92,31 @@ class StudentPortalService:
         include_topic_segments: bool = True,
         include_knowledge_chunks: bool = True,
     ) -> list[ValidatedLectureBundle]:
-        false_claims = (
+        if lecture_ids is not None and not lecture_ids:
+            return []
+
+        # Apply the lecture filter inside each aggregate, not only after the
+        # joins. Single-lecture navigation should never count unrelated rows.
+        false_stmt = (
             select(Claim.lecture_id, func.count(Claim.id).label("false_claim_count"))
             .where(Claim.verdict == ClaimVerdict.false)
             .group_by(Claim.lecture_id)
-            .subquery()
         )
-        reference_counts = (
+        reference_stmt = (
             select(ReferenceFile.lecture_id, func.count(ReferenceFile.id).label("reference_count"))
             .group_by(ReferenceFile.lecture_id)
-            .subquery()
         )
-        topic_counts = (
+        topic_stmt = (
             select(TopicSegment.lecture_id, func.count(TopicSegment.id).label("topic_count"))
             .group_by(TopicSegment.lecture_id)
-            .subquery()
         )
+        if lecture_ids is not None:
+            false_stmt = false_stmt.where(Claim.lecture_id.in_(lecture_ids))
+            reference_stmt = reference_stmt.where(ReferenceFile.lecture_id.in_(lecture_ids))
+            topic_stmt = topic_stmt.where(TopicSegment.lecture_id.in_(lecture_ids))
+        false_claims = false_stmt.subquery()
+        reference_counts = reference_stmt.subquery()
+        topic_counts = topic_stmt.subquery()
 
         stmt: Select[tuple[Lecture, int, int, int]] = (
             select(
@@ -123,7 +132,7 @@ class StudentPortalService:
             .where(func.coalesce(false_claims.c.false_claim_count, 0) == 0)
             .order_by(Lecture.lecture_date.desc().nullslast(), Lecture.created_at.desc())
         )
-        if lecture_ids:
+        if lecture_ids is not None:
             stmt = stmt.where(Lecture.id.in_(lecture_ids))
 
         load_options = []
@@ -176,14 +185,20 @@ class StudentPortalService:
     def _lecture_summary(self, lecture: Lecture, *, reference_count: int | None = None) -> str:
         if lecture.summary and lecture.summary.strip():
             return lecture.summary.strip()[:800]
+        # Async SQLAlchemy may not lazy-load unloaded relationships here.
+        chunks = [] if "knowledge_chunks" in inspect(lecture).unloaded else lecture.knowledge_chunks
         visible_summaries = [
             chunk.content.strip()
-            for chunk in lecture.knowledge_chunks
+            for chunk in chunks
             if bool(chunk.details.get("student_visible")) and str(chunk.details.get("kind", "")) in {"reference_topic", "topic", "reference_full"}
         ]
         if visible_summaries:
             return " ".join(visible_summaries[:2])[:800].strip()
-        if (reference_count or 0) > 0 or lecture.reference_files:
+        if (reference_count or 0) > 0 or (
+            reference_count is None
+            and "reference_files" not in inspect(lecture).unloaded
+            and lecture.reference_files
+        ):
             return "Trusted reference content is attached, but student-facing lecture topics are still waiting for approval."
         return "This lecture is waiting for topic approval before lecture notes are shown to students."
 
@@ -362,7 +377,26 @@ class StudentPortalService:
         return subjects
 
     async def get_subject(self, session: AsyncSession, subject_id: str) -> StudentSubjectDetail | None:
-        bundles = await self._validated_lecture_bundles(session)
+        # Most uploaded lectures have an indexed subject_key. Preserve the
+        # legacy derived-slug fallback for older records without that column.
+        ids = list(await session.scalars(
+            select(Lecture.id).where(Lecture.subject_key == subject_id)
+        ))
+        if not ids:
+            summaries = await self._validated_lecture_bundles(
+                session,
+                include_reference_files=False,
+                include_topic_segments=False,
+                include_knowledge_chunks=False,
+            )
+            ids = [bundle.lecture.id for bundle in summaries if self._subject_id(bundle.lecture) == subject_id]
+        bundles = await self._validated_lecture_bundles(
+            session,
+            lecture_ids=ids,
+            include_reference_files=False,
+            include_topic_segments=False,
+            include_knowledge_chunks=True,
+        )
         subject_bundles = [bundle for bundle in bundles if self._subject_id(bundle.lecture) == subject_id]
         if not subject_bundles:
             return None
@@ -399,8 +433,8 @@ class StudentPortalService:
                 lecture_number=bundle.lecture.lecture_number,
                 lecture_date=bundle.lecture.lecture_date.isoformat() if bundle.lecture.lecture_date else None,
                 faculty_name=bundle.lecture.faculty_name,
-                summary=self._lecture_summary(bundle.lecture),
-                topic_count=bundle.topic_count or len(bundle.lecture.topic_segments),
+                summary=self._lecture_summary(bundle.lecture, reference_count=bundle.reference_count),
+                topic_count=bundle.topic_count,
                 reference_count=bundle.reference_count,
                     validation_source=self._validation_source(bundle.lecture, reference_count=bundle.reference_count),
                 progress_status=None,
@@ -411,8 +445,8 @@ class StudentPortalService:
         return StudentSubjectDetail(subject=subject, lectures=lectures)
 
     async def get_lecture(self, session: AsyncSession, lecture_id: uuid.UUID) -> StudentLectureDetail | None:
-        bundles = await self._validated_lecture_bundles(session)
-        bundle = next((item for item in bundles if item.lecture.id == lecture_id), None)
+        bundles = await self._validated_lecture_bundles(session, lecture_ids=[lecture_id])
+        bundle = bundles[0] if bundles else None
         if bundle is None:
             return None
 
@@ -665,14 +699,35 @@ class StudentPortalService:
         )
 
     async def get_practice_questions(self, session: AsyncSession, limit: int = 6) -> list[StudentPracticeQuestion]:
-        bundles = await self._validated_lecture_bundles(session)
+        # First select eligibility with light metadata. Only hydrate knowledge
+        # chunks for lectures that actually have approved study topics.
+        summaries = await self._validated_lecture_bundles(
+            session,
+            include_reference_files=False,
+            include_topic_segments=False,
+            include_knowledge_chunks=False,
+        )
+        if not summaries:
+            return []
+        candidates = [bundle.lecture.id for bundle in summaries]
+        topic_ids = set((await session.scalars(
+            select(KnowledgeChunk.lecture_id)
+            .where(KnowledgeChunk.lecture_id.in_(candidates))
+            .where(KnowledgeChunk.details["student_visible"].astext == "true")
+            .where(KnowledgeChunk.details["kind"].astext.in_(("reference_topic", "topic")))
+            .distinct()
+        )).all())
+        eligible_ids = [lecture_id for lecture_id in candidates if lecture_id in topic_ids][:limit]
+        bundles = await self._validated_lecture_bundles(
+            session,
+            lecture_ids=eligible_ids,
+            include_reference_files=False,
+            include_topic_segments=False,
+            include_knowledge_chunks=True,
+        )
+        bundle_map = {bundle.lecture.id: bundle for bundle in bundles}
+        eligible_bundles = [bundle_map[lecture_id] for lecture_id in eligible_ids if lecture_id in bundle_map]
         questions: list[StudentPracticeQuestion] = []
-
-        eligible_bundles = [
-            bundle
-            for bundle in bundles
-            if self._knowledge_topics(bundle.lecture)
-        ]
 
         for bundle in eligible_bundles[:limit]:
             lecture = bundle.lecture
