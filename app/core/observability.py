@@ -40,7 +40,11 @@ def install_observability(app):
         metrics['duration_seconds'] += elapsed
         for index, bound in enumerate(latency_bounds): latency_counts[index] += int(elapsed <= bound)
         response.headers['X-Request-ID'] = request_id
-        logging.getLogger('api.http').info(json.dumps({'event': 'request', 'request_id': request_id, 'method': request.method, 'status': response.status_code, 'duration_ms': round(elapsed * 1000, 3)}))
+        response.headers['Server-Timing'] = f'app;dur={elapsed * 1000:.1f}'
+        # Route template (e.g. /api/v1/student/lectures/{lecture_id}), never the raw
+        # URL or query, so per-endpoint latency can be read from logs safely.
+        route = getattr(request.scope.get('route'), 'path', None)
+        logging.getLogger('api.http').info(json.dumps({'event': 'request', 'request_id': request_id, 'method': request.method, 'route': route, 'status': response.status_code, 'duration_ms': round(elapsed * 1000, 3)}))
         return response
     @app.exception_handler(HTTPException)
     async def http_error(request, exc):
