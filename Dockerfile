@@ -15,6 +15,9 @@ COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . .
+# PYTHONDONTWRITEBYTECODE stops runtime caching, so ship the application's
+# bytecode instead of recompiling it in both processes on every cold start.
+RUN python -m compileall -q app scripts
 
 EXPOSE 8000
 
